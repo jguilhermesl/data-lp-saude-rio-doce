@@ -5,6 +5,7 @@ import {
   Users,
   Settings,
   ClipboardList,
+  Calendar,
 } from "lucide-react";
 
 // Configuração dos itens da sidebar
@@ -37,6 +38,14 @@ export const SIDEBAR_ITEMS: SidebarItem[] = [
   {
     label: "Categorias",
     href: "/company/categories",
+    label: "Atendimentos",
+    href: "/appointments",
+    icon: Calendar,
+    adminOnly: false,
+  },
+  {
+    label: "Pacientes",
+    href: "/patient",
     icon: FolderTree,
     adminOnly: false,
   },
