@@ -4,6 +4,7 @@ import {
   FolderTree,
   Users,
   Settings,
+  ClipboardList,
   Calendar,
 } from "lucide-react";
 
@@ -29,6 +30,14 @@ export const SIDEBAR_ITEMS: SidebarItem[] = [
     adminOnly: false,
   },
   {
+    label: "Procedimentos",
+    href: "/procedures",
+    icon: ClipboardList,
+    adminOnly: false,
+  },
+  {
+    label: "Categorias",
+    href: "/company/categories",
     label: "Atendimentos",
     href: "/appointments",
     icon: Calendar,
