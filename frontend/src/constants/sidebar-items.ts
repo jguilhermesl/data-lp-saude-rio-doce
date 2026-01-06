@@ -35,8 +35,8 @@ export const SIDEBAR_ITEMS: SidebarItem[] = [
     adminOnly: false,
   },
   {
-    label: "Categorias",
-    href: "/company/categories",
+    label: "Pacientes",
+    href: "/patient",
     icon: FolderTree,
     adminOnly: false,
   },
