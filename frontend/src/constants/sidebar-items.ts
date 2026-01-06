@@ -4,6 +4,7 @@ import {
   FolderTree,
   Users,
   Settings,
+  ClipboardList,
 } from "lucide-react";
 
 // Configuração dos itens da sidebar
@@ -25,6 +26,12 @@ export const SIDEBAR_ITEMS: SidebarItem[] = [
     label: "Médicos",
     href: "/doctors",
     icon: Package,
+    adminOnly: false,
+  },
+  {
+    label: "Procedimentos",
+    href: "/procedures",
+    icon: ClipboardList,
     adminOnly: false,
   },
   {
