@@ -1,7 +1,7 @@
-import { AppointmentsMetricCards } from './appointments-metric-cards';
-import { AppointmentsTableFilters } from './appointments-table-filter';
-import { AppointmentsList } from './appointments-list';
 import { PrivateLayout } from '@/components/private-layout';
+import { AppointmentsList } from './appointments-list';
+import { AppointmentsTableFilters } from './appointments-table-filter';
+import { AppointmentsMetricCards } from './appointments-metric-cards';
 
 export const AppointmentsTemplate = () => {
   return (
