@@ -43,14 +43,22 @@ const API_CONFIG = {
 };
 
 /**
- * Converte valor no formato brasileiro (25,00) para Decimal
+ * Converte valor BR (135,00) ou centavos (11500) para decimal
+ * Se o valor não contém vírgula ou ponto, assume que está em centavos
+ * Exemplos: "11500" -> 115.00 | "135,00" -> 135.00 | "1.135,50" -> 1135.50
  */
 function parseDecimalValue(value: string): number | null {
-  if (!value || value === '0' || value === '0,00') {
+  if (!value || value === '0' || value === '0,00' || value === '0.00') {
     return null;
   }
   
-  // Remove pontos de milhar e substitui vírgula por ponto
+  // Se não contém vírgula nem ponto, está em centavos (formato inteiro)
+  if (!value.includes(',') && !value.includes('.')) {
+    const parsed = parseInt(value, 10);
+    return isNaN(parsed) ? null : parsed / 100; // Dividir por 100 para converter de centavos
+  }
+  
+  // Caso contrário, processar como formato BR (1.234,56 ou 234,56)
   const normalized = value.replace(/\./g, '').replace(',', '.');
   const parsed = parseFloat(normalized);
   

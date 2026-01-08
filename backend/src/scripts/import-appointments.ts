@@ -164,17 +164,22 @@ function parseBRDate(dateStr: string): Date | null {
 }
 
 /**
- * Converte valor BR (135,00) para decimal
+ * Converte valor que sempre vem em centavos para decimal
+ * A API sempre retorna valores em centavos (sem separadores decimais)
+ * Exemplos: "11500" -> 115.00 | "13500" -> 135.00 | "113550" -> 1135.50
  */
 function parseDecimal(value: string): number | null {
   if (!value || value === '0' || value === '0,00' || value === '0.00') {
     return null;
   }
   
-  const normalized = value.replace(/\./g, '').replace(',', '.');
-  const parsed = parseFloat(normalized);
+  // Remove qualquer ponto ou vírgula que possa existir
+  const cleanValue = value.replace(/[.,]/g, '');
   
-  return isNaN(parsed) ? null : parsed;
+  // Converte para número inteiro e divide por 100 (centavos -> reais)
+  const parsed = parseInt(cleanValue, 10);
+  
+  return isNaN(parsed) ? null : parsed / 100;
 }
 
 /**
