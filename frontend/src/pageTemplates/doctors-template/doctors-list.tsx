@@ -1,10 +1,4 @@
-import {
-  Table,
-  TableBody,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+import { Table } from '@/components/ui/table/table';
 import { DoctorsTableRow } from './doctors-table-row';
 
 export const DoctorsList = () => {
@@ -17,25 +11,22 @@ export const DoctorsList = () => {
     revenue: 49900 + i * 1000,
   }));
 
+  const headers = [
+    'Médico',
+    'Especialidade',
+    'Faturamento',
+    'Atendimentos',
+    'Ticket médio',
+    '',
+  ];
+
   return (
     <div>
       <div className="border rounded-md">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Identificador</TableHead>
-              <TableHead>Médico</TableHead>
-              <TableHead>Especialidade</TableHead>
-              <TableHead>Faturamento</TableHead>
-              <TableHead> Atendimentos</TableHead>
-              <TableHead> Ticket médio </TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {mockDoctors.map((doctor) => {
-              return <DoctorsTableRow key={doctor.id} doctor={doctor} />;
-            })}
-          </TableBody>
+        <Table headers={headers}>
+          {mockDoctors.map((doctor) => {
+            return <DoctorsTableRow key={doctor.id} doctor={doctor} />;
+          })}
         </Table>
       </div>
     </div>

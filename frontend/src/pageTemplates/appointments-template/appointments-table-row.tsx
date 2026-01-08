@@ -1,7 +1,7 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import { TableCell, TableRow } from '@/components/ui/table';
+import { Table } from '@/components/ui/table';
 import { Eye } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
@@ -74,64 +74,64 @@ export const AppointmentsTableRow = ({
   };
 
   return (
-    <TableRow>
+    <Table.Row>
       {/* Data */}
-      <TableCell className="font-medium whitespace-nowrap">
+      <Table.Col className="font-medium whitespace-nowrap">
         {appointment.dat_atendimento}
-      </TableCell>
+      </Table.Col>
 
       {/* Hora */}
-      <TableCell className="font-medium whitespace-nowrap">
+      <Table.Col className="font-medium whitespace-nowrap">
         {appointment.hora_atendimento}
-      </TableCell>
+      </Table.Col>
 
       {/* Paciente */}
-      <TableCell className="font-medium">{appointment.paciente}</TableCell>
+      <Table.Col className="font-medium">{appointment.paciente}</Table.Col>
 
       {/* Médico */}
-      <TableCell className="font-medium">{appointment.medico}</TableCell>
+      <Table.Col className="font-medium">{appointment.medico}</Table.Col>
 
       {/* Especialidade (exames) */}
-      <TableCell className="font-medium">{appointment.exames}</TableCell>
+      <Table.Col className="font-medium">{appointment.exames}</Table.Col>
 
       {/* Convênio */}
-      <TableCell className="font-medium">{appointment.convenio}</TableCell>
+      <Table.Col className="font-medium">{appointment.convenio}</Table.Col>
 
       {/* Procedimento(s) (exames) */}
-      <TableCell className="font-medium">{appointment.exames}</TableCell>
+      <Table.Col className="font-medium">{appointment.exames}</Table.Col>
 
       {/* Valor dos Exames */}
-      <TableCell className="font-medium whitespace-nowrap">
+      <Table.Col className="font-medium whitespace-nowrap">
         {formatCurrency(appointment.vlr_exames)}
-      </TableCell>
+      </Table.Col>
 
       {/* Valor Pago */}
-      <TableCell className="font-medium whitespace-nowrap">
+      <Table.Col className="font-medium whitespace-nowrap">
         {formatCurrency(appointment.vlr_pago)}
-      </TableCell>
+      </Table.Col>
 
       {/* Forma(s) de Pagamento */}
-      <TableCell className="font-medium">
+      <Table.Col className="font-medium">
         {appointment.pagamentos_realizados}
-      </TableCell>
+      </Table.Col>
 
       {/* Usuário Responsável */}
-      <TableCell className="font-medium">
+      <Table.Col className="font-medium">
         {appointment.txt_usuario_responsavel}
-      </TableCell>
+      </Table.Col>
 
       {/* Status */}
-      <TableCell className="font-medium">
+      <Table.Col className="font-medium">
         {getStatusBadge(appointment.status)}
-      </TableCell>
+      </Table.Col>
 
       {/* Ações */}
-      <TableCell>
+      <Table.Col>
         <Button variant="ghost" size="sm" onClick={handleViewDetails}>
           <Eye className="mr-2 h-3 w-3" />
           Ver detalhes
         </Button>
-      </TableCell>
-    </TableRow>
+      </Table.Col>
+    </Table.Row>
   );
 };

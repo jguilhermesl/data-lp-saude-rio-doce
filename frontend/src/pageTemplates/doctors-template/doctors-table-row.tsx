@@ -1,6 +1,6 @@
 'use client';
 import { Button } from '@/components/ui/button';
-import { TableCell, TableRow } from '@/components/ui/table';
+import { Table } from '@/components/ui/table/table';
 import { Eye } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
@@ -22,28 +22,25 @@ export const DoctorsTableRow = ({ doctor }: DoctorsTableRowProps) => {
   };
 
   return (
-    <TableRow>
-      <TableCell className="font-mono">
-        {doctor.externalId || doctor.id}
-      </TableCell>
-      <TableCell className="font-medium">{doctor.name}</TableCell>
-      <TableCell className="font-medium">Cardiologista</TableCell>
-      <TableCell className="font-medium">
+    <Table.Row>
+      <Table.Col className="font-medium">{doctor.name}</Table.Col>
+      <Table.Col className="font-medium">Cardiologista</Table.Col>
+      <Table.Col className="font-medium">
         {doctor.revenue
           ? new Intl.NumberFormat('pt-BR', {
               style: 'currency',
               currency: 'BRL',
             }).format(doctor.revenue)
           : 'R$ 0,00'}
-      </TableCell>
-      <TableCell className="font-medium">123</TableCell>
-      <TableCell className="font-medium">R$ 34,00</TableCell>
-      <TableCell>
+      </Table.Col>
+      <Table.Col className="font-medium">123</Table.Col>
+      <Table.Col className="font-medium">R$ 34,00</Table.Col>
+      <Table.Col>
         <Button variant="ghost" size="sm" onClick={handleViewDetails}>
           <Eye className="mr-2 h-3 w-3" />
           Ver detalhes
         </Button>
-      </TableCell>
-    </TableRow>
+      </Table.Col>
+    </Table.Row>
   );
 };

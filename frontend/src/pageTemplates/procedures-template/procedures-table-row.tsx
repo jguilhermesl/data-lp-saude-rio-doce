@@ -1,6 +1,6 @@
 'use client';
 import { Button } from '@/components/ui/button';
-import { TableCell, TableRow } from '@/components/ui/table';
+import { Table } from '@/components/ui/table';
 import { Eye } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
@@ -23,36 +23,36 @@ export const ProceduresTableRow = ({ procedure }: ProceduresTableRowProps) => {
   };
 
   return (
-    <TableRow>
-      <TableCell className="font-medium">{procedure.name}</TableCell>
-      <TableCell className="font-medium">
+    <Table.Row>
+      <Table.Col className="font-medium">{procedure.name}</Table.Col>
+      <Table.Col className="font-medium">
         {procedure.specialty || 'N/A'}
-      </TableCell>
-      <TableCell className="font-medium">
+      </Table.Col>
+      <Table.Col className="font-medium">
         {procedure.revenue
           ? new Intl.NumberFormat('pt-BR', {
               style: 'currency',
               currency: 'BRL',
             }).format(procedure.revenue)
           : 'R$ 0,00'}
-      </TableCell>
-      <TableCell className="font-medium">
+      </Table.Col>
+      <Table.Col className="font-medium">
         {procedure.appointments || 0}
-      </TableCell>
-      <TableCell className="font-medium">
+      </Table.Col>
+      <Table.Col className="font-medium">
         {procedure.averageTicket
           ? new Intl.NumberFormat('pt-BR', {
               style: 'currency',
               currency: 'BRL',
             }).format(procedure.averageTicket)
           : 'R$ 0,00'}
-      </TableCell>
-      <TableCell>
+      </Table.Col>
+      <Table.Col>
         <Button variant="ghost" size="sm" onClick={handleViewDetails}>
           <Eye className="mr-2 h-3 w-3" />
           Ver detalhes
         </Button>
-      </TableCell>
-    </TableRow>
+      </Table.Col>
+    </Table.Row>
   );
 };

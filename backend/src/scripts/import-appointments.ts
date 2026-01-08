@@ -1,0 +1,429 @@
+import { prisma } from '../lib/prisma';
+
+/**
+ * Interface para a resposta da API de atendimentos
+ */
+interface AppointmentAPIResponse {
+  rows: {
+    hii_cod_atendimento: string;
+    cod_atendimento: string;
+    hid_status: string;
+    status: string;
+    status_obs: string;
+    txt_usuario_responsavel: string;
+    paciente: string;
+    medico: string;
+    dat_atendimento: string;
+    hora_atendimento: string;
+    dat_criacao: string;
+    convenio: string;
+    botoes_acoes: string;
+    cod_pag_medico_reg: string | null;
+    vlr_exames: string;
+    fnd_vlr_exames: string;
+    vlr_pago: string;
+    fnd_vlr_pago: string;
+    exames: string;
+    pagamentos_realizados: string;
+    obs_pagto: string;
+    statusAtend: string;
+  }[];
+  total?: number;
+  page?: number;
+}
+
+/**
+ * Configuração da API
+ */
+const API_CONFIG = {
+  url: 'https://ww3.s2web.com.br/lp_riodoce/modules/atendimentos/atendimentos_visualizacao.php',
+  headers: {
+    'Accept': 'application/json, text/javascript, */*; q=0.01',
+    'Accept-Language': 'en-US,en;q=0.9',
+    'Connection': 'keep-alive',
+    'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+    'Origin': 'https://ww3.s2web.com.br',
+    'Referer': 'https://ww3.s2web.com.br/lp_riodoce/index.php?m=atendimentos&a=index',
+    'Sec-Fetch-Dest': 'empty',
+    'Sec-Fetch-Mode': 'cors',
+    'Sec-Fetch-Site': 'same-origin',
+    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36',
+    'X-Requested-With': 'XMLHttpRequest',
+    'sec-ch-ua': '"Google Chrome";v="143", "Chromium";v="143", "Not A(Brand";v="24"',
+    'sec-ch-ua-mobile': '?0',
+    'sec-ch-ua-platform': '"macOS"',
+    'Cookie': 'dotproject=hllhp910t3ar325ms9m3tq7el6; PHPSESSID=kd2rmta1sup8elfvpcsr04nrq4',
+  },
+  sourceSystem: 's2web',
+  rowsPerPage: 50,
+};
+
+/**
+ * Cache de médicos e pacientes
+ */
+let doctorsCache: Map<string, string> | null = null;
+let patientsCache: Map<string, string> | null = null;
+
+/**
+ * Carrega todos os médicos em cache
+ */
+async function loadDoctorsCache(): Promise<Map<string, string>> {
+  if (doctorsCache) {
+    return doctorsCache;
+  }
+
+  console.log('👨‍⚕️ Carregando médicos em cache...');
+  
+  const doctors = await prisma.doctor.findMany({
+    where: {
+      sourceSystem: API_CONFIG.sourceSystem,
+    },
+    select: {
+      id: true,
+      name: true,
+    },
+  });
+
+  doctorsCache = new Map(
+    doctors.map((d) => [d.name.toUpperCase(), d.id])
+  );
+
+  console.log(`   ✓ ${doctorsCache.size} médicos carregados\n`);
+  
+  return doctorsCache;
+}
+
+/**
+ * Carrega todos os pacientes em cache
+ */
+async function loadPatientsCache(): Promise<Map<string, string>> {
+  if (patientsCache) {
+    return patientsCache;
+  }
+
+  console.log('🏥 Carregando pacientes em cache...');
+  
+  const patients = await prisma.patient.findMany({
+    where: {
+      sourceSystem: API_CONFIG.sourceSystem,
+    },
+    select: {
+      id: true,
+      fullName: true,
+    },
+  });
+
+  patientsCache = new Map(
+    patients.map((p) => [p.fullName.toUpperCase(), p.id])
+  );
+
+  console.log(`   ✓ ${patientsCache.size} pacientes carregados\n`);
+  
+  return patientsCache;
+}
+
+/**
+ * Converte data BR (dd/mm/yyyy) para Date object válido
+ */
+function parseBRDate(dateStr: string): Date | null {
+  if (!dateStr || dateStr.trim() === '') return null;
+  
+  const parts = dateStr.trim().split('/');
+  if (parts.length !== 3) return null;
+  
+  const [day, month, year] = parts;
+  
+  const parsedDay = parseInt(day, 10);
+  const parsedMonth = parseInt(month, 10);
+  const parsedYear = parseInt(year, 10);
+  
+  // Validar se são números válidos
+  if (isNaN(parsedDay) || isNaN(parsedMonth) || isNaN(parsedYear)) {
+    return null;
+  }
+  
+  // Validar ranges básicos
+  if (parsedDay < 1 || parsedDay > 31 || parsedMonth < 1 || parsedMonth > 12 || parsedYear < 1900) {
+    return null;
+  }
+  
+  // Criar data usando o construtor com parâmetros (month é 0-indexed)
+  const date = new Date(parsedYear, parsedMonth - 1, parsedDay, 0, 0, 0, 0);
+  
+  // Validar se a data criada corresponde aos valores fornecidos
+  // Isso evita datas inválidas como 31/02/2024
+  if (
+    date.getFullYear() !== parsedYear ||
+    date.getMonth() !== parsedMonth - 1 ||
+    date.getDate() !== parsedDay
+  ) {
+    return null;
+  }
+  
+  return date;
+}
+
+/**
+ * Converte valor BR (135,00) para decimal
+ */
+function parseDecimal(value: string): number | null {
+  if (!value || value === '0' || value === '0,00' || value === '0.00') {
+    return null;
+  }
+  
+  const normalized = value.replace(/\./g, '').replace(',', '.');
+  const parsed = parseFloat(normalized);
+  
+  return isNaN(parsed) ? null : parsed;
+}
+
+/**
+ * Busca atendimentos de uma página específica da API
+ */
+async function fetchAppointmentsPage(page: number, startDate: string, endDate: string): Promise<AppointmentAPIResponse | null> {
+  const body = new URLSearchParams({
+    cod_usuario: '164',
+    token: '80d61f7e77bc15d9216b53dbe2769eea',
+    medicos: '',
+    convenios: '',
+    nome_ou_num_atend: '',
+    ini: startDate, // formato: dd/mm/yyyy
+    ter: endDate,
+    status: '',
+    pendencia_financ: '',
+    usuario: '',
+    page: page.toString(),
+    rows: API_CONFIG.rowsPerPage.toString(),
+  });
+
+  try {
+    const response = await fetch(API_CONFIG.url, {
+      method: 'POST',
+      headers: API_CONFIG.headers,
+      body: body.toString(),
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const text = await response.text();
+    if (!text || text.trim() === '') {
+      return null;
+    }
+
+    return JSON.parse(text);
+  } catch (error) {
+    if (error instanceof SyntaxError) {
+      return null;
+    }
+    throw error;
+  }
+}
+
+/**
+ * Script principal de importação de atendimentos
+ */
+async function importAppointments() {
+  console.log('🚀 Iniciando importação de atendimentos...\n');
+
+  // IMPORTANTE: Defina o período de datas para importação
+  const START_DATE = '01/01/2024'; // dd/mm/yyyy
+  const END_DATE = '31/12/2026';   // dd/mm/yyyy
+  
+  console.log(`📅 Período: ${START_DATE} até ${END_DATE}\n`);
+
+  let page = 1;
+  let hasMore = true;
+  let totalImported = 0;
+  let totalUpdated = 0;
+  let totalErrors = 0;
+  let doctorsNotFound = new Set<string>();
+  let patientsNotFound = new Set<string>();
+
+  try {
+    // Carregar caches
+    const doctorsCache = await loadDoctorsCache();
+    const patientsCache = await loadPatientsCache();
+
+    while (hasMore) {
+      console.log(`📄 Buscando página ${page}...`);
+
+      const data = await fetchAppointmentsPage(page, START_DATE, END_DATE);
+
+      if (!data || !data.rows || data.rows.length === 0) {
+        console.log('✅ Não há mais páginas para processar.\n');
+        hasMore = false;
+        break;
+      }
+
+      console.log(`   ➡️  Encontrados ${data.rows.length} atendimentos nesta página`);
+
+      // Processar todos os atendimentos em paralelo
+      const results = await Promise.allSettled(
+        data.rows.map(async (appointment) => {
+          // Buscar médico e paciente
+          const doctorId = doctorsCache.get(appointment.medico.toUpperCase());
+          const patientId = patientsCache.get(appointment.paciente.toUpperCase());
+
+          if (!doctorId) {
+            doctorsNotFound.add(appointment.medico);
+          }
+
+          if (!patientId) {
+            patientsNotFound.add(appointment.paciente);
+          }
+
+          // Se não encontrar médico ou paciente, pular
+          if (!doctorId || !patientId) {
+            return { appointment, skipped: true };
+          }
+
+          // Converter datas e valores
+          const appointmentDate = parseBRDate(appointment.dat_atendimento);
+          const createdDate = parseBRDate(appointment.dat_criacao);
+          const examValue = parseDecimal(appointment.vlr_exames);
+          const paidValue = parseDecimal(appointment.vlr_pago);
+          const paymentDone = appointment.hid_status === 'F'; // F = Fechado
+
+          // Se a data do atendimento for inválida, pular este registro
+          if (!appointmentDate) {
+            return { 
+              appointment, 
+              skipped: true, 
+              reason: `Data inválida: ${appointment.dat_atendimento}` 
+            };
+          }
+
+          const result = await prisma.appointment.upsert({
+            where: {
+              externalId_sourceSystem: {
+                externalId: appointment.hii_cod_atendimento,
+                sourceSystem: API_CONFIG.sourceSystem,
+              },
+            },
+            update: {
+              appointmentDate,
+              appointmentTime: appointment.hora_atendimento || null,
+              createdDate,
+              insuranceName: appointment.convenio || null,
+              examValue,
+              paidValue,
+              paymentDone,
+              examsRaw: appointment.exames || null,
+              patientId,
+              doctorId,
+              syncedAt: new Date(),
+              rawPayload: appointment,
+            },
+            create: {
+              externalId: appointment.hii_cod_atendimento,
+              appointmentDate,
+              appointmentTime: appointment.hora_atendimento || null,
+              createdDate,
+              insuranceName: appointment.convenio || null,
+              examValue,
+              paidValue,
+              paymentDone,
+              examsRaw: appointment.exames || null,
+              patientId,
+              doctorId,
+              sourceSystem: API_CONFIG.sourceSystem,
+              syncedAt: new Date(),
+              rawPayload: appointment,
+            },
+          });
+
+          return { appointment, result, skipped: false };
+        })
+      );
+
+      // Processar resultados
+      let skipped = 0;
+      results.forEach((promiseResult) => {
+        if (promiseResult.status === 'fulfilled') {
+          const { appointment, skipped: wasSkipped, result } = promiseResult.value;
+          
+          if (wasSkipped) {
+            skipped++;
+            return;
+          }
+
+          if (result) {
+            const isNew = result.createdAt.getTime() === result.updatedAt.getTime();
+            if (isNew) {
+              totalImported++;
+            } else {
+              totalUpdated++;
+            }
+
+            console.log(`   ✓ Atendimento ${appointment.hii_cod_atendimento} - ${appointment.paciente} (${appointment.dat_atendimento})`);
+          }
+        } else {
+          totalErrors++;
+          console.error(`   ✗ Erro:`, promiseResult.reason);
+        }
+      });
+
+      if (skipped > 0) {
+        console.log(`   ⚠️  ${skipped} atendimento(s) pulado(s) (médico/paciente não encontrado)`);
+      }
+
+      console.log('');
+      page++;
+
+      await new Promise((resolve) => setTimeout(resolve, 500));
+    }
+
+    // Resumo final
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('✅ IMPORTAÇÃO CONCLUÍDA');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log(`📊 Estatísticas:`);
+    console.log(`   • Total de páginas processadas: ${page - 1}`);
+    console.log(`   • Atendimentos criados: ${totalImported}`);
+    console.log(`   • Atendimentos atualizados: ${totalUpdated}`);
+    console.log(`   • Total processado: ${totalImported + totalUpdated}`);
+    if (totalErrors > 0) {
+      console.log(`   • Erros: ${totalErrors}`);
+    }
+
+    if (doctorsNotFound.size > 0) {
+      console.log(`\n⚠️  Médicos não encontrados (${doctorsNotFound.size}):`);
+      Array.from(doctorsNotFound).slice(0, 10).forEach((name) => {
+        console.log(`   • ${name}`);
+      });
+      if (doctorsNotFound.size > 10) {
+        console.log(`   ... e mais ${doctorsNotFound.size - 10}`);
+      }
+    }
+
+    if (patientsNotFound.size > 0) {
+      console.log(`\n⚠️  Pacientes não encontrados (${patientsNotFound.size}):`);
+      Array.from(patientsNotFound).slice(0, 10).forEach((name) => {
+        console.log(`   • ${name}`);
+      });
+      if (patientsNotFound.size > 10) {
+        console.log(`   ... e mais ${patientsNotFound.size - 10}`);
+      }
+    }
+
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+  } catch (error) {
+    console.error('❌ Erro fatal durante a importação:', error);
+    throw error;
+  } finally {
+    await prisma.$disconnect();
+  }
+}
+
+// Executar o script
+importAppointments()
+  .then(() => {
+    console.log('🎉 Script finalizado com sucesso!');
+    process.exit(0);
+  })
+  .catch((error) => {
+    console.error('💥 Script finalizado com erro:', error);
+    process.exit(1);
+  });

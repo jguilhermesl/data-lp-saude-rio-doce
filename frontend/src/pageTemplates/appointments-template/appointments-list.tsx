@@ -1,10 +1,4 @@
-import {
-  Table,
-  TableBody,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+import { Table } from '@/components/ui/table';
 import { AppointmentsTableRow } from './appointments-table-row';
 
 export const AppointmentsList = () => {
@@ -30,37 +24,34 @@ export const AppointmentsList = () => {
       '<span class="btn btn-success btn-sm"><strong>FECHADO</strong></span>',
   }));
 
+  const headers = [
+    'Data',
+    'Hora',
+    'Paciente',
+    'Médico',
+    'Especialidade',
+    'Convênio',
+    'Procedimento(s)',
+    'Valor dos Exames',
+    'Valor Pago',
+    'Forma(s) de Pagamento',
+    'Usuário Responsável',
+    'Status',
+    'Ações',
+  ];
+
   return (
     <div>
       <div className="border rounded-md overflow-x-auto">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Data</TableHead>
-              <TableHead>Hora</TableHead>
-              <TableHead>Paciente</TableHead>
-              <TableHead>Médico</TableHead>
-              <TableHead>Especialidade</TableHead>
-              <TableHead>Convênio</TableHead>
-              <TableHead>Procedimento(s)</TableHead>
-              <TableHead>Valor dos Exames</TableHead>
-              <TableHead>Valor Pago</TableHead>
-              <TableHead>Forma(s) de Pagamento</TableHead>
-              <TableHead>Usuário Responsável</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Ações</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {mockAppointments.map((appointment) => {
-              return (
-                <AppointmentsTableRow
-                  key={appointment.cod_atendimento}
-                  appointment={appointment}
-                />
-              );
-            })}
-          </TableBody>
+        <Table headers={headers}>
+          {mockAppointments.map((appointment) => {
+            return (
+              <AppointmentsTableRow
+                key={appointment.cod_atendimento}
+                appointment={appointment}
+              />
+            );
+          })}
         </Table>
       </div>
     </div>

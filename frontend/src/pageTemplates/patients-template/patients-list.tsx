@@ -1,10 +1,4 @@
-import {
-  Table,
-  TableBody,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+import { Table } from '@/components/ui/table';
 import { PatientsTableRow } from './patients-table-row';
 
 export const PatientsList = () => {
@@ -22,26 +16,23 @@ export const PatientsList = () => {
     lastAppointmentDate: new Date(2025, 0, 15 - i),
   }));
 
+  const headers = [
+    'Nome do paciente',
+    'CPF',
+    'LP Benefícios',
+    'Total gasto no período',
+    'Número de atendimentos',
+    'Data do último atendimento',
+    'Ações',
+  ];
+
   return (
     <div>
       <div className="border rounded-md">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Nome do paciente</TableHead>
-              <TableHead>CPF</TableHead>
-              <TableHead>LP Benefícios</TableHead>
-              <TableHead>Total gasto no período</TableHead>
-              <TableHead>Número de atendimentos</TableHead>
-              <TableHead>Data do último atendimento</TableHead>
-              <TableHead>Ações</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {mockPatients.map((patient) => {
-              return <PatientsTableRow key={patient.id} patient={patient} />;
-            })}
-          </TableBody>
+        <Table headers={headers}>
+          {mockPatients.map((patient) => {
+            return <PatientsTableRow key={patient.id} patient={patient} />;
+          })}
         </Table>
       </div>
     </div>

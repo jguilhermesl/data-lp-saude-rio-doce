@@ -1,6 +1,6 @@
 'use client';
 import { Button } from '@/components/ui/button';
-import { TableCell, TableRow } from '@/components/ui/table';
+import { Table } from '@/components/ui/table';
 import { Eye, Pencil, Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
@@ -35,12 +35,12 @@ export const UsersTableRow = ({ user }: UsersTableRowProps) => {
   };
 
   return (
-    <TableRow>
-      <TableCell className="font-medium">{user.name}</TableCell>
-      <TableCell>{user.email}</TableCell>
-      <TableCell>{user.password}</TableCell>
-      <TableCell>{user.phone}</TableCell>
-      <TableCell>
+    <Table.Row>
+      <Table.Col className="font-medium">{user.name}</Table.Col>
+      <Table.Col>{user.email}</Table.Col>
+      <Table.Col>{user.password}</Table.Col>
+      <Table.Col>{user.phone}</Table.Col>
+      <Table.Col>
         <span
           className={`px-3 py-1 rounded-full text-sm font-medium ${
             user.accessType === 'Admin'
@@ -50,8 +50,8 @@ export const UsersTableRow = ({ user }: UsersTableRowProps) => {
         >
           {user.accessType}
         </span>
-      </TableCell>
-      <TableCell>
+      </Table.Col>
+      <Table.Col>
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="sm" onClick={handleViewDetails}>
             <Eye className="h-4 w-4" />
@@ -68,7 +68,7 @@ export const UsersTableRow = ({ user }: UsersTableRowProps) => {
             <Trash2 className="h-4 w-4" />
           </Button>
         </div>
-      </TableCell>
-    </TableRow>
+      </Table.Col>
+    </Table.Row>
   );
 };

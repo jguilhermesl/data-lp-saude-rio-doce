@@ -1,10 +1,4 @@
-import {
-  Table,
-  TableBody,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+import { Table } from '@/components/ui/table';
 import { UsersTableRow } from './users-table-row';
 
 export const UsersList = () => {
@@ -18,25 +12,15 @@ export const UsersList = () => {
     accessType: i % 3 === 0 ? 'Admin' : 'Membro',
   }));
 
+  const headers = ['Nome', 'E-mail', 'Senha', 'Telefone', 'Tipo de acesso', 'Ações'];
+
   return (
     <div>
       <div className="border rounded-md">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Nome</TableHead>
-              <TableHead>E-mail</TableHead>
-              <TableHead>Senha</TableHead>
-              <TableHead>Telefone</TableHead>
-              <TableHead>Tipo de acesso</TableHead>
-              <TableHead>Ações</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {mockUsers.map((user) => {
-              return <UsersTableRow key={user.id} user={user} />;
-            })}
-          </TableBody>
+        <Table headers={headers}>
+          {mockUsers.map((user) => {
+            return <UsersTableRow key={user.id} user={user} />;
+          })}
         </Table>
       </div>
     </div>

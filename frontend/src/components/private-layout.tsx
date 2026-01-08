@@ -28,7 +28,7 @@ export const PrivateLayout = ({
   title,
   description,
   actionsComponent,
-  isAdmin = false,
+  isAdmin = true,
 }: IPrivateLayoutProps) => {
   const [isExpanded, setIsExpanded] = useState(true);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);

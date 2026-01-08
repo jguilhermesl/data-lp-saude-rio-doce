@@ -1,6 +1,6 @@
 'use client';
 import { Button } from '@/components/ui/button';
-import { TableCell, TableRow } from '@/components/ui/table';
+import { Table } from '@/components/ui/table';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Eye } from 'lucide-react';
@@ -43,10 +43,10 @@ export const PatientsTableRow = ({ patient }: PatientsTableRowProps) => {
   };
 
   return (
-    <TableRow>
-      <TableCell className="font-medium">{patient.name}</TableCell>
-      <TableCell className="font-mono">{patient.cpf}</TableCell>
-      <TableCell>
+    <Table.Row>
+      <Table.Col className="font-medium">{patient.name}</Table.Col>
+      <Table.Col className="font-mono">{patient.cpf}</Table.Col>
+      <Table.Col>
         <span
           className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadgeColor(
             patient.lpBenefitsStatus
@@ -54,20 +54,20 @@ export const PatientsTableRow = ({ patient }: PatientsTableRowProps) => {
         >
           {patient.lpBenefitsStatus}
         </span>
-      </TableCell>
-      <TableCell className="font-medium">
+      </Table.Col>
+      <Table.Col className="font-medium">
         {formatCurrency(patient.totalSpent)}
-      </TableCell>
-      <TableCell className="font-medium">{patient.appointmentsCount}</TableCell>
-      <TableCell className="font-medium">
+      </Table.Col>
+      <Table.Col className="font-medium">{patient.appointmentsCount}</Table.Col>
+      <Table.Col className="font-medium">
         {formatDate(patient.lastAppointmentDate)}
-      </TableCell>
-      <TableCell>
+      </Table.Col>
+      <Table.Col>
         <Button variant="ghost" size="sm" onClick={handleViewDetails}>
           <Eye className="mr-2 h-3 w-3" />
           Ver detalhes
         </Button>
-      </TableCell>
-    </TableRow>
+      </Table.Col>
+    </Table.Row>
   );
 };

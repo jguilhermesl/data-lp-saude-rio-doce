@@ -18,7 +18,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
+} from '@/components/ui/table/table';
 
 interface ProcedureDetailsTemplateProps {
   procedureId: string;
