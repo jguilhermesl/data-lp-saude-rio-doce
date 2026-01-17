@@ -12,94 +12,147 @@ import {
 import { ArrowLeft, Save, Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { usersApi, User } from '@/services/api/users';
 
 interface UserDetailsTemplateProps {
   userId: string;
 }
 
-interface UserDetails {
-  id: string;
-  name: string;
-  email: string;
-  phone: string;
-  accessType: 'Admin' | 'Membro';
-  createdAt?: string;
-  lastLogin?: string;
-}
-
 export const UserDetailsTemplate = ({ userId }: UserDetailsTemplateProps) => {
   const router = useRouter();
-  const [user, setUser] = useState<UserDetails | null>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [isEditing, setIsEditing] = useState(userId === 'new');
+
+  // TODO: Get user role from auth context
+  const isAdmin = true; // This should come from authentication context
 
   // Form states
   const [formData, setFormData] = useState({
     name: '',
     email: '',
+    password: '',
+    role: 'VIEWER' as 'ADMIN' | 'MANAGER' | 'VIEWER',
     phone: '',
-    accessType: 'Membro' as 'Admin' | 'Membro',
   });
 
   useEffect(() => {
-    if (userId === 'new') {
-      setLoading(false);
+    const loadUser = async () => {
+      if (userId === 'new') {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        setLoading(true);
+        // Fetch user from API
+        const response = await usersApi.getAll();
+        const foundUser = response.users.find((u) => u.id === userId);
+
+        if (foundUser) {
+          setUser(foundUser);
+          setFormData({
+            name: foundUser.name || '',
+            email: foundUser.email,
+            password: '', // Never pre-fill password
+            role: foundUser.role,
+            phone: foundUser.phone || '',
+          });
+        } else {
+          alert('Usuário não encontrado!');
+          router.push('/company/users');
+        }
+      } catch (error) {
+        console.error('Error loading user:', error);
+        alert('Erro ao carregar usuário. Tente novamente.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadUser();
+  }, [userId, router]);
+
+  const handleSave = async () => {
+    // Validate form
+    if (!formData.name.trim()) {
+      alert('Nome é obrigatório!');
+      return;
+    }
+    if (!formData.email.trim()) {
+      alert('E-mail é obrigatório!');
+      return;
+    }
+    if (userId === 'new' && !formData.password) {
+      alert('Senha é obrigatória para novos usuários!');
       return;
     }
 
-    // TODO: Replace with real API call
-    // Example: fetch(`/api/users/${userId}`).then(res => res.json())
+    try {
+      setSaving(true);
 
-    // Mock data for demonstration
-    setTimeout(() => {
-      const mockUser: UserDetails = {
-        id: userId,
-        name: 'Maria Silva',
-        email: 'maria.silva@example.com',
-        phone: '(21) 98765-4321',
-        accessType: 'Admin',
-        createdAt: '15/12/2025',
-        lastLogin: '05/01/2026',
-      };
-      setUser(mockUser);
-      setFormData({
-        name: mockUser.name,
-        email: mockUser.email,
-        phone: mockUser.phone,
-        accessType: mockUser.accessType,
-      });
-      setLoading(false);
-    }, 500);
-  }, [userId]);
-
-  const handleSave = () => {
-    // TODO: Implement save logic with API call
-    console.log('Saving user:', formData);
-
-    if (userId === 'new') {
-      // Create new user
-      alert('Usuário criado com sucesso!');
-      router.push('/company/users');
-    } else {
-      // Update existing user
-      alert('Usuário atualizado com sucesso!');
-      setIsEditing(false);
-      if (user) {
-        setUser({
-          ...user,
-          ...formData,
+      if (userId === 'new') {
+        // Create new user
+        await usersApi.create({
+          name: formData.name,
+          email: formData.email,
+          password: formData.password,
+          role: formData.role,
+          phone: formData.phone || undefined,
         });
+        alert('Usuário criado com sucesso!');
+        router.push('/company/users');
+      } else {
+        // Update existing user
+        const updateData: any = {
+          name: formData.name,
+          email: formData.email,
+          role: formData.role,
+          phone: formData.phone || undefined,
+        };
+
+        // Only include password if it was changed
+        if (formData.password) {
+          updateData.password = formData.password;
+        }
+
+        const updatedUser = await usersApi.update(userId, updateData);
+        setUser(updatedUser);
+        alert('Usuário atualizado com sucesso!');
+        setIsEditing(false);
+        // Clear password field after update
+        setFormData((prev) => ({ ...prev, password: '' }));
       }
+    } catch (error: any) {
+      console.error('Error saving user:', error);
+      alert(
+        error?.response?.data?.message ||
+          'Erro ao salvar usuário. Tente novamente.',
+      );
+    } finally {
+      setSaving(false);
     }
   };
 
-  const handleDelete = () => {
-    // TODO: Implement delete logic with confirmation dialog
-    if (confirm(`Tem certeza que deseja deletar o usuário ${user?.name}?`)) {
-      console.log('Deleting user:', userId);
-      // API call to delete user would go here
+  const handleDelete = async () => {
+    if (!confirm(`Tem certeza que deseja deletar o usuário ${user?.name}?`)) {
+      return;
+    }
+
+    try {
+      setDeleting(true);
+      await usersApi.delete(userId);
       alert('Usuário deletado com sucesso!');
       router.push('/company/users');
+    } catch (error: any) {
+      console.error('Error deleting user:', error);
+      alert(
+        error?.response?.data?.message ||
+          'Erro ao deletar usuário. Tente novamente.',
+      );
+      setDeleting(false);
     }
   };
 
@@ -110,10 +163,11 @@ export const UserDetailsTemplate = ({ userId }: UserDetailsTemplateProps) => {
       setIsEditing(false);
       if (user) {
         setFormData({
-          name: user.name,
+          name: user.name || '',
           email: user.email,
-          phone: user.phone,
-          accessType: user.accessType,
+          password: '',
+          role: user.role,
+          phone: user.phone || '',
         });
       }
     }
@@ -129,13 +183,69 @@ export const UserDetailsTemplate = ({ userId }: UserDetailsTemplateProps) => {
     );
   }
 
+  // Redirect if not admin
+  if (!isAdmin) {
+    router.push('/company/users');
+    return null;
+  }
+
   const isNewUser = userId === 'new';
   const title = isNewUser ? 'Novo Usuário' : user?.name || 'Usuário';
   const description = isNewUser
     ? 'Preencha os dados para criar um novo usuário'
     : isEditing
-    ? 'Edite os dados do usuário'
-    : user?.email || '';
+      ? 'Edite os dados do usuário'
+      : user?.email || '';
+
+  const getRoleName = (role: string) => {
+    const roleNames = {
+      ADMIN: 'Administrador',
+      MANAGER: 'Gerente',
+      VIEWER: 'Visualizador',
+    };
+    return roleNames[role as keyof typeof roleNames] || role;
+  };
+
+  const getRoleColor = (role: string) => {
+    const roleColors = {
+      ADMIN: 'bg-purple-100 text-purple-700',
+      MANAGER: 'bg-blue-100 text-blue-700',
+      VIEWER: 'bg-gray-100 text-gray-700',
+    };
+    return (
+      roleColors[role as keyof typeof roleColors] || 'bg-gray-100 text-gray-700'
+    );
+  };
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
+
+  const formatPhoneNumber = (value: string) => {
+    // Remove tudo que não é número
+    const numbers = value.replace(/\D/g, '');
+
+    // Aplica a máscara ## #####-####
+    if (numbers.length <= 2) {
+      return numbers;
+    } else if (numbers.length <= 7) {
+      return `${numbers.slice(0, 2)} ${numbers.slice(2)}`;
+    } else {
+      return `${numbers.slice(0, 2)} ${numbers.slice(2, 7)}-${numbers.slice(7, 11)}`;
+    }
+  };
+
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const formatted = formatPhoneNumber(e.target.value);
+    setFormData({ ...formData, phone: formatted });
+  };
 
   return (
     <PrivateLayout title={title} description={description}>
@@ -177,6 +287,7 @@ export const UserDetailsTemplate = ({ userId }: UserDetailsTemplateProps) => {
                     setFormData({ ...formData, name: e.target.value })
                   }
                   placeholder="Digite o nome completo"
+                  disabled={saving || deleting}
                 />
               ) : (
                 <p className="text-base text-gray-900 py-2">{user?.name}</p>
@@ -195,6 +306,7 @@ export const UserDetailsTemplate = ({ userId }: UserDetailsTemplateProps) => {
                     setFormData({ ...formData, email: e.target.value })
                   }
                   placeholder="Digite o e-mail"
+                  disabled={saving || deleting}
                 />
               ) : (
                 <p className="text-base text-gray-900 py-2">{user?.email}</p>
@@ -203,52 +315,76 @@ export const UserDetailsTemplate = ({ userId }: UserDetailsTemplateProps) => {
 
             <div>
               <label className="text-sm font-medium text-gray-700 mb-2 block">
-                Telefone *
+                {isNewUser
+                  ? 'Senha *'
+                  : 'Nova Senha (deixe em branco para manter)'}
               </label>
               {isEditing || isNewUser ? (
                 <Input
-                  value={formData.phone}
+                  type="password"
+                  value={formData.password}
                   onChange={(e) =>
-                    setFormData({ ...formData, phone: e.target.value })
+                    setFormData({ ...formData, password: e.target.value })
                   }
-                  placeholder="(00) 00000-0000"
+                  placeholder={
+                    isNewUser ? 'Digite a senha' : 'Digite a nova senha'
+                  }
+                  disabled={saving || deleting}
                 />
               ) : (
-                <p className="text-base text-gray-900 py-2">{user?.phone}</p>
+                <p className="text-base text-gray-400 py-2">••••••••</p>
               )}
             </div>
 
             <div>
               <label className="text-sm font-medium text-gray-700 mb-2 block">
-                Tipo de Acesso *
+                Função *
               </label>
               {isEditing || isNewUser ? (
                 <Select
-                  value={formData.accessType}
-                  onValueChange={(value: 'Admin' | 'Membro') =>
-                    setFormData({ ...formData, accessType: value })
+                  value={formData.role}
+                  onValueChange={(value: 'ADMIN' | 'MANAGER' | 'VIEWER') =>
+                    setFormData({ ...formData, role: value })
                   }
+                  disabled={saving || deleting}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Selecione o tipo de acesso" />
+                    <SelectValue placeholder="Selecione a função" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Admin">Admin</SelectItem>
-                    <SelectItem value="Membro">Membro</SelectItem>
+                    <SelectItem value="ADMIN">Administrador</SelectItem>
+                    <SelectItem value="MANAGER">Gerente</SelectItem>
+                    <SelectItem value="VIEWER">Visualizador</SelectItem>
                   </SelectContent>
                 </Select>
               ) : (
                 <div className="py-2">
                   <span
-                    className={`px-3 py-1 rounded-full text-sm font-medium ${
-                      user?.accessType === 'Admin'
-                        ? 'bg-purple-100 text-purple-700'
-                        : 'bg-blue-100 text-blue-700'
-                    }`}
+                    className={`px-3 py-1 rounded-full text-sm font-medium ${getRoleColor(user?.role || '')}`}
                   >
-                    {user?.accessType}
+                    {getRoleName(user?.role || '')}
                   </span>
                 </div>
+              )}
+            </div>
+
+            <div>
+              <label className="text-sm font-medium text-gray-700 mb-2 block">
+                Telefone
+              </label>
+              {isEditing || isNewUser ? (
+                <Input
+                  type="tel"
+                  value={formData.phone}
+                  onChange={handlePhoneChange}
+                  placeholder="11 98765-4321"
+                  maxLength={14}
+                  disabled={saving || deleting}
+                />
+              ) : (
+                <p className="text-base text-gray-900 py-2">
+                  {user?.phone || '-'}
+                </p>
               )}
             </div>
 
@@ -257,16 +393,39 @@ export const UserDetailsTemplate = ({ userId }: UserDetailsTemplateProps) => {
                 <label className="text-sm font-medium text-gray-700 mb-2 block">
                   Data de Criação
                 </label>
-                <p className="text-base text-gray-900 py-2">{user.createdAt}</p>
+                <p className="text-base text-gray-900 py-2">
+                  {formatDate(user.createdAt)}
+                </p>
               </div>
             )}
 
-            {!isNewUser && user?.lastLogin && (
+            {!isNewUser && user?.updatedAt && (
               <div>
                 <label className="text-sm font-medium text-gray-700 mb-2 block">
-                  Último Acesso
+                  Última Atualização
                 </label>
-                <p className="text-base text-gray-900 py-2">{user.lastLogin}</p>
+                <p className="text-base text-gray-900 py-2">
+                  {formatDate(user.updatedAt)}
+                </p>
+              </div>
+            )}
+
+            {!isNewUser && user?.active !== undefined && (
+              <div>
+                <label className="text-sm font-medium text-gray-700 mb-2 block">
+                  Status
+                </label>
+                <div className="py-2">
+                  <span
+                    className={`px-3 py-1 rounded-full text-sm font-medium ${
+                      user.active
+                        ? 'bg-green-100 text-green-700'
+                        : 'bg-red-100 text-red-700'
+                    }`}
+                  >
+                    {user.active ? 'Ativo' : 'Inativo'}
+                  </span>
+                </div>
               </div>
             )}
           </div>
@@ -274,11 +433,19 @@ export const UserDetailsTemplate = ({ userId }: UserDetailsTemplateProps) => {
           {/* Action Buttons */}
           {(isEditing || isNewUser) && (
             <div className="flex items-center gap-3 mt-6 pt-6 border-t border-gray-200">
-              <Button onClick={handleSave}>
+              <Button onClick={handleSave} disabled={saving || deleting}>
                 <Save className="mr-2 h-4 w-4" />
-                {isNewUser ? 'Criar Usuário' : 'Salvar Alterações'}
+                {saving
+                  ? 'Salvando...'
+                  : isNewUser
+                    ? 'Criar Usuário'
+                    : 'Salvar Alterações'}
               </Button>
-              <Button variant="outline" onClick={handleCancel}>
+              <Button
+                variant="outline"
+                onClick={handleCancel}
+                disabled={saving || deleting}
+              >
                 Cancelar
               </Button>
               {!isNewUser && (
@@ -286,9 +453,10 @@ export const UserDetailsTemplate = ({ userId }: UserDetailsTemplateProps) => {
                   variant="destructive"
                   onClick={handleDelete}
                   className="ml-auto"
+                  disabled={saving || deleting}
                 >
                   <Trash2 className="mr-2 h-4 w-4" />
-                  Deletar Usuário
+                  {deleting ? 'Deletando...' : 'Deletar Usuário'}
                 </Button>
               )}
             </div>
