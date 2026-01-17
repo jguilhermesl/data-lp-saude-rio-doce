@@ -13,6 +13,7 @@ import { ArrowLeft, Save, Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { usersApi, User } from '@/services/api/users';
+import { toast } from 'sonner';
 
 interface UserDetailsTemplateProps {
   userId: string;
@@ -78,15 +79,15 @@ export const UserDetailsTemplate = ({ userId }: UserDetailsTemplateProps) => {
   const handleSave = async () => {
     // Validate form
     if (!formData.name.trim()) {
-      alert('Nome é obrigatório!');
+      toast.error('Nome é obrigatório!');
       return;
     }
     if (!formData.email.trim()) {
-      alert('E-mail é obrigatório!');
+      toast.error('E-mail é obrigatório!');
       return;
     }
     if (userId === 'new' && !formData.password) {
-      alert('Senha é obrigatória para novos usuários!');
+      toast.error('Senha é obrigatória para novos usuários!');
       return;
     }
 
@@ -102,7 +103,7 @@ export const UserDetailsTemplate = ({ userId }: UserDetailsTemplateProps) => {
           role: formData.role,
           phone: formData.phone || undefined,
         });
-        alert('Usuário criado com sucesso!');
+        toast.success('Usuário criado com sucesso!');
         router.push('/company/users');
       } else {
         // Update existing user
@@ -120,14 +121,14 @@ export const UserDetailsTemplate = ({ userId }: UserDetailsTemplateProps) => {
 
         const updatedUser = await usersApi.update(userId, updateData);
         setUser(updatedUser);
-        alert('Usuário atualizado com sucesso!');
+        toast.success('Usuário atualizado com sucesso!');
         setIsEditing(false);
         // Clear password field after update
         setFormData((prev) => ({ ...prev, password: '' }));
       }
     } catch (error: any) {
       console.error('Error saving user:', error);
-      alert(
+      toast.error(
         error?.response?.data?.message ||
           'Erro ao salvar usuário. Tente novamente.',
       );
@@ -136,24 +137,32 @@ export const UserDetailsTemplate = ({ userId }: UserDetailsTemplateProps) => {
     }
   };
 
-  const handleDelete = async () => {
-    if (!confirm(`Tem certeza que deseja deletar o usuário ${user?.name}?`)) {
-      return;
-    }
-
-    try {
-      setDeleting(true);
-      await usersApi.delete(userId);
-      alert('Usuário deletado com sucesso!');
-      router.push('/company/users');
-    } catch (error: any) {
-      console.error('Error deleting user:', error);
-      alert(
-        error?.response?.data?.message ||
-          'Erro ao deletar usuário. Tente novamente.',
-      );
-      setDeleting(false);
-    }
+  const handleDelete = () => {
+    toast(`Tem certeza que deseja deletar o usuário ${user?.name}?`, {
+      description: 'Esta ação não pode ser desfeita.',
+      action: {
+        label: 'Confirmar',
+        onClick: async () => {
+          try {
+            setDeleting(true);
+            await usersApi.delete(userId);
+            toast.success('Usuário deletado com sucesso!');
+            router.push('/company/users');
+          } catch (error: any) {
+            console.error('Error deleting user:', error);
+            toast.error(
+              error?.response?.data?.message ||
+                'Erro ao deletar usuário. Tente novamente.',
+            );
+            setDeleting(false);
+          }
+        },
+      },
+      cancel: {
+        label: 'Cancelar',
+        onClick: () => {},
+      },
+    });
   };
 
   const handleCancel = () => {
