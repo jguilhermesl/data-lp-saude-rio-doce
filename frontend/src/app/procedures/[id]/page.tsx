@@ -1,13 +1,14 @@
 import { ProcedureDetailsTemplate } from '@/pageTemplates/procedure-details-template';
 
-interface ProcedureDetailsPageProps {
-  params: {
+interface PageProps {
+  params: Promise<{
     id: string;
-  };
+  }>;
 }
 
-export default function ProcedureDetailsPage({
-  params,
-}: ProcedureDetailsPageProps) {
-  return <ProcedureDetailsTemplate procedureId={params.id} />;
-}
+const Page = async ({ params }: PageProps) => {
+  const { id } = await params;
+  return <ProcedureDetailsTemplate procedureId={id} />;
+};
+
+export default Page;

@@ -6,17 +6,54 @@ import { prisma } from '@/lib/prisma';
 const querySchema = z.object({
   startDate: z.string().transform((val) => new Date(val)),
   endDate: z.string().transform((val) => new Date(val)),
+  search: z.string().optional(),
 });
 
 export const getDoctorsMetrics = async (req: any, res: any) => {
   try {
-    const { startDate, endDate } = querySchema.parse(req.query);
+    const { startDate, endDate, search } = querySchema.parse(req.query);
 
-    // Buscar performance de todos os médicos
-    const doctorsPerformance = await doctorDAO.getDoctorsPerformance(startDate, endDate);
+    // Construir filtro de busca por nome
+    const whereFilter = search
+      ? {
+          name: {
+            contains: search,
+            mode: 'insensitive' as const,
+          },
+        }
+      : {};
+
+    // Buscar TODOS os médicos (não apenas os que têm atendimentos no período)
+    const allDoctors = await prisma.doctor.findMany({
+      where: whereFilter,
+      include: {
+        appointments: {
+          where: {
+            appointmentDate: { gte: startDate, lte: endDate },
+          },
+          select: {
+            id: true,
+            examValue: true,
+            paidValue: true,
+            patientId: true,
+            appointmentDate: true,
+          },
+        },
+        doctorSpecialties: {
+          include: {
+            specialty: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
+        },
+      },
+    });
 
     // Processar métricas de cada médico
-    const metricsPromises = doctorsPerformance.map(async (doctor) => {
+    const metricsPromises = allDoctors.map(async (doctor) => {
       // Calcular faturamento e atendimentos
       const totalRevenue = doctor.appointments.reduce(
         (sum, apt) => sum + Number(apt.examValue || 0),
@@ -39,7 +76,6 @@ export const getDoctorsMetrics = async (req: any, res: any) => {
       const specialties = doctor.doctorSpecialties.map((ds) => ({
         id: ds.specialty.id,
         name: ds.specialty.name,
-        acronym: ds.specialty.acronym,
       }));
 
       // Pacientes únicos
@@ -71,29 +107,45 @@ export const getDoctorsMetrics = async (req: any, res: any) => {
     // Ordenar por faturamento (decrescente)
     metrics = metrics.sort((a, b) => b.totalRevenue - a.totalRevenue);
 
-    // Identificar top performers
-    const topByRevenue = metrics[0];
-    const topByReturnRate = metrics.reduce((prev, current) =>
-      prev.returnRate > current.returnRate ? prev : current
-    );
-    const topByAppointments = metrics.reduce((prev, current) =>
-      prev.appointmentCount > current.appointmentCount ? prev : current
-    );
+    // Filtrar médicos com dados relevantes para cada cálculo do summary
+    const doctorsWithRevenue = metrics.filter(m => m.totalRevenue > 0);
+    const doctorsWithAppointments = metrics.filter(m => m.appointmentCount > 0);
+    const doctorsWithPatients = metrics.filter(m => m.returningPatientsCount + m.newPatientsCount > 0);
 
-    // Calcular médias gerais
-    const totalDoctors = metrics.length;
-    const avgRevenue =
-      metrics.reduce((sum, m) => sum + m.totalRevenue, 0) / (totalDoctors || 1);
-    const avgAppointments =
-      metrics.reduce((sum, m) => sum + m.appointmentCount, 0) / (totalDoctors || 1);
-    const avgReturnRate =
-      metrics.reduce((sum, m) => sum + m.returnRate, 0) / (totalDoctors || 1);
-    const avgTicket = metrics.reduce((sum, m) => sum + m.averageTicket, 0) / (totalDoctors || 1);
+    // Identificar top performers (apenas entre os que têm dados relevantes)
+    const topByRevenue = doctorsWithRevenue.length > 0 ? doctorsWithRevenue[0] : null;
+    const topByReturnRate = doctorsWithPatients.length > 0
+      ? doctorsWithPatients.reduce((prev, current) =>
+          prev.returnRate > current.returnRate ? prev : current
+        )
+      : null;
+    const topByAppointments = doctorsWithAppointments.length > 0
+      ? doctorsWithAppointments.reduce((prev, current) =>
+          prev.appointmentCount > current.appointmentCount ? prev : current
+        )
+      : null;
+
+    // Calcular médias apenas com médicos que têm dados relevantes
+    const avgRevenue = doctorsWithRevenue.length > 0
+      ? doctorsWithRevenue.reduce((sum, m) => sum + m.totalRevenue, 0) / doctorsWithRevenue.length
+      : 0;
+    
+    const avgAppointments = doctorsWithAppointments.length > 0
+      ? doctorsWithAppointments.reduce((sum, m) => sum + m.appointmentCount, 0) / doctorsWithAppointments.length
+      : 0;
+    
+    const avgReturnRate = doctorsWithPatients.length > 0
+      ? doctorsWithPatients.reduce((sum, m) => sum + m.returnRate, 0) / doctorsWithPatients.length
+      : 0;
+    
+    const avgTicket = doctorsWithAppointments.length > 0
+      ? doctorsWithAppointments.reduce((sum, m) => sum + m.averageTicket, 0) / doctorsWithAppointments.length
+      : 0;
 
     // Resposta
     const response = {
       summary: {
-        totalDoctors,
+        totalDoctors: metrics.length, // Total de TODOS os médicos
         avgRevenue,
         avgAppointments,
         avgReturnRate,
@@ -120,7 +172,7 @@ export const getDoctorsMetrics = async (req: any, res: any) => {
             }
           : null,
       },
-      doctors: metrics,
+      doctors: metrics, // Retorna TODOS os médicos
       period: {
         startDate,
         endDate,

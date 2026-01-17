@@ -1,7 +1,7 @@
 import { prisma } from '../lib/prisma';
 
 /**
- * Interface para a resposta da API de procedimentos
+ * Interface para a resposta da API de procedimentos (endpoint medicos_especialidade)
  */
 interface ProcedureAPIResponse {
   rows: {
@@ -17,7 +17,29 @@ interface ProcedureAPIResponse {
 }
 
 /**
- * Configuração da API
+ * Interface para a resposta da API AMB (endpoint amb_visualizacao)
+ */
+interface AMBAPIResponse {
+  rows: {
+    cod_amb: string;
+    hid_cod_amb: string;
+    sigla: string;
+    tipo_tabela: string;
+    tabela_amb: string;
+    descricao: string;
+    fnd_valor: string;
+    id_categoria: string;
+    id_especialidade: string;
+    prazo_volta: string;
+    categoria: string | null;
+    especialidade: string;
+  }[];
+  total?: number;
+  page?: number;
+}
+
+/**
+ * Configuração da API de Procedimentos (medicos_especialidade)
  */
 const API_CONFIG = {
   url: 'https://ww3.s2web.com.br/lp_riodoce/modules/medicos_especialidade/procedimentos_visualizacao.php',
@@ -40,6 +62,32 @@ const API_CONFIG = {
   },
   sourceSystem: 's2web',
   rowsPerPage: 50,
+};
+
+/**
+ * Configuração da API AMB (amb_visualizacao)
+ */
+const AMB_API_CONFIG = {
+  url: 'https://ww3.s2web.com.br/lp_riodoce/modules/amb/amb_visualizacao.php',
+  headers: {
+    'Accept': 'application/json, text/javascript, */*; q=0.01',
+    'Accept-Language': 'en-US,en;q=0.9',
+    'Connection': 'keep-alive',
+    'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+    'Origin': 'https://ww3.s2web.com.br',
+    'Referer': 'https://ww3.s2web.com.br/lp_riodoce/index.php?m=amb',
+    'Sec-Fetch-Dest': 'empty',
+    'Sec-Fetch-Mode': 'cors',
+    'Sec-Fetch-Site': 'same-origin',
+    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36',
+    'X-Requested-With': 'XMLHttpRequest',
+    'sec-ch-ua': '"Google Chrome";v="143", "Chromium";v="143", "Not A(Brand";v="24"',
+    'sec-ch-ua-mobile': '?0',
+    'sec-ch-ua-platform': '"macOS"',
+    'Cookie': 'dotproject=hllhp910t3ar325ms9m3tq7el6; PHPSESSID=kd2rmta1sup8elfvpcsr04nrq4',
+  },
+  sourceSystem: 's2web',
+  rowsPerPage: 100,
 };
 
 /**
@@ -66,7 +114,7 @@ function parseDecimalValue(value: string): number | null {
 }
 
 /**
- * Busca procedimentos de uma página específica da API
+ * Busca procedimentos de uma página específica da API (medicos_especialidade)
  */
 async function fetchProceduresPage(page: number): Promise<ProcedureAPIResponse | null> {
   const body = new URLSearchParams({
@@ -81,6 +129,47 @@ async function fetchProceduresPage(page: number): Promise<ProcedureAPIResponse |
     const response = await fetch(API_CONFIG.url, {
       method: 'POST',
       headers: API_CONFIG.headers,
+      body: body.toString(),
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    // Verificar se há conteúdo antes de parsear
+    const text = await response.text();
+    if (!text || text.trim() === '') {
+      return null;
+    }
+
+    return JSON.parse(text);
+  } catch (error) {
+    if (error instanceof SyntaxError) {
+      // Erro de parsing JSON - provavelmente fim da paginação
+      return null;
+    }
+    throw error;
+  }
+}
+
+/**
+ * Busca procedimentos AMB de uma página específica da API
+ */
+async function fetchAMBProceduresPage(page: number): Promise<AMBAPIResponse | null> {
+  const body = new URLSearchParams({
+    cod_usuario: '164',
+    token: 'c71613c0ffca35cbf4789f6435b25e53',
+    letra: '',
+    filtro_id_especialidade: '',
+    filtro_id_categoria: '',
+    page: page.toString(),
+    rows: AMB_API_CONFIG.rowsPerPage.toString(),
+  });
+
+  try {
+    const response = await fetch(AMB_API_CONFIG.url, {
+      method: 'POST',
+      headers: AMB_API_CONFIG.headers,
       body: body.toString(),
     });
 
@@ -141,8 +230,207 @@ async function loadSpecialtiesCache(): Promise<Map<string, string>> {
 /**
  * Busca especialidade por nome usando cache
  */
-function findSpecialtyByName(name: string, cache: Map<string, string>): string | null {
+function findSpecialtyByName(name: string | null, cache: Map<string, string>): string | null {
+  if (!name) {
+    return null;
+  }
   return cache.get(name.toUpperCase()) || null;
+}
+
+/**
+ * Importa procedimentos do endpoint medicos_especialidade
+ */
+async function importMedicosEspecialidadeProcedures(
+  specialtiesCache: Map<string, string>,
+  stats: { imported: number; updated: number; errors: number; specialtiesNotFound: Set<string> }
+) {
+  console.log('📋 Importando procedimentos do endpoint MEDICOS_ESPECIALIDADE...\n');
+
+  let page = 1;
+  let hasMore = true;
+
+  while (hasMore) {
+    console.log(`📄 Buscando página ${page} (medicos_especialidade)...`);
+
+    const data = await fetchProceduresPage(page);
+
+    if (!data || !data.rows || data.rows.length === 0) {
+      console.log('✅ Não há mais páginas para processar (medicos_especialidade).\n');
+      hasMore = false;
+      break;
+    }
+
+    console.log(`   ➡️  Encontrados ${data.rows.length} procedimentos nesta página`);
+
+    const results = await Promise.allSettled(
+      data.rows.map(async (procedure) => {
+        const specialtyId = findSpecialtyByName(procedure.especialidade, specialtiesCache);
+        
+        if (!specialtyId) {
+          stats.specialtiesNotFound.add(procedure.especialidade);
+        }
+
+        const defaultPrice = parseDecimalValue(procedure.fnd_valor);
+
+        const result = await prisma.procedure.upsert({
+          where: {
+            externalId_sourceSystem: {
+              externalId: procedure.hid_cod_amb,
+              sourceSystem: API_CONFIG.sourceSystem,
+            },
+          },
+          update: {
+            name: procedure.descricao,
+            code: procedure.sigla || null,
+            defaultPrice: defaultPrice,
+            ch: procedure.ch || null,
+            specialtyName: procedure.especialidade,
+            specialtyId: specialtyId,
+            syncedAt: new Date(),
+            rawPayload: procedure,
+          },
+          create: {
+            externalId: procedure.hid_cod_amb,
+            name: procedure.descricao,
+            code: procedure.sigla || null,
+            defaultPrice: defaultPrice,
+            ch: procedure.ch || null,
+            specialtyName: procedure.especialidade,
+            specialtyId: specialtyId,
+            sourceSystem: API_CONFIG.sourceSystem,
+            syncedAt: new Date(),
+            rawPayload: procedure,
+          },
+        });
+
+        return { result, procedure, specialtyId };
+      })
+    );
+
+    results.forEach((promiseResult) => {
+      if (promiseResult.status === 'fulfilled') {
+        const { result, procedure, specialtyId } = promiseResult.value;
+        
+        const isNew = result.createdAt.getTime() === result.updatedAt.getTime();
+        if (isNew) {
+          stats.imported++;
+        } else {
+          stats.updated++;
+        }
+
+        const specialtyWarning = !specialtyId ? ' ⚠️' : '';
+        console.log(`   ✓ ${procedure.descricao} (ID: ${procedure.hid_cod_amb})${specialtyWarning}`);
+      } else {
+        stats.errors++;
+        console.error(`   ✗ Erro ao processar procedimento:`, promiseResult.reason);
+      }
+    });
+
+    console.log('');
+    page++;
+
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  }
+
+  return page - 1;
+}
+
+/**
+ * Importa procedimentos do endpoint AMB
+ */
+async function importAMBProcedures(
+  specialtiesCache: Map<string, string>,
+  stats: { imported: number; updated: number; errors: number; specialtiesNotFound: Set<string> }
+) {
+  console.log('📋 Importando procedimentos do endpoint AMB...\n');
+
+  let page = 1;
+  let hasMore = true;
+
+  while (hasMore) {
+    console.log(`📄 Buscando página ${page} (AMB)...`);
+
+    const data = await fetchAMBProceduresPage(page);
+
+    if (!data || !data.rows || data.rows.length === 0) {
+      console.log('✅ Não há mais páginas para processar (AMB).\n');
+      hasMore = false;
+      break;
+    }
+
+    console.log(`   ➡️  Encontrados ${data.rows.length} procedimentos nesta página`);
+
+    const results = await Promise.allSettled(
+      data.rows.map(async (procedure) => {
+        const specialtyId = findSpecialtyByName(procedure.especialidade, specialtiesCache);
+        
+        if (!specialtyId) {
+          stats.specialtiesNotFound.add(procedure.especialidade);
+        }
+
+        const defaultPrice = parseDecimalValue(procedure.fnd_valor);
+
+        const result = await prisma.procedure.upsert({
+          where: {
+            externalId_sourceSystem: {
+              externalId: procedure.hid_cod_amb,
+              sourceSystem: AMB_API_CONFIG.sourceSystem,
+            },
+          },
+          update: {
+            name: procedure.descricao.trim(),
+            code: procedure.sigla || null,
+            defaultPrice: defaultPrice,
+            ch: null, // AMB não tem campo CH
+            specialtyName: procedure.especialidade,
+            specialtyId: specialtyId,
+            syncedAt: new Date(),
+            rawPayload: procedure,
+          },
+          create: {
+            externalId: procedure.hid_cod_amb,
+            name: procedure.descricao.trim(),
+            code: procedure.sigla || null,
+            defaultPrice: defaultPrice,
+            ch: null, // AMB não tem campo CH
+            specialtyName: procedure.especialidade,
+            specialtyId: specialtyId,
+            sourceSystem: AMB_API_CONFIG.sourceSystem,
+            syncedAt: new Date(),
+            rawPayload: procedure,
+          },
+        });
+
+        return { result, procedure, specialtyId };
+      })
+    );
+
+    results.forEach((promiseResult) => {
+      if (promiseResult.status === 'fulfilled') {
+        const { result, procedure, specialtyId } = promiseResult.value;
+        
+        const isNew = result.createdAt.getTime() === result.updatedAt.getTime();
+        if (isNew) {
+          stats.imported++;
+        } else {
+          stats.updated++;
+        }
+
+        const specialtyWarning = !specialtyId ? ' ⚠️' : '';
+        console.log(`   ✓ ${procedure.descricao.trim()} (ID: ${procedure.hid_cod_amb})${specialtyWarning}`);
+      } else {
+        stats.errors++;
+        console.error(`   ✗ Erro ao processar procedimento:`, promiseResult.reason);
+      }
+    });
+
+    console.log('');
+    page++;
+
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  }
+
+  return page - 1;
 }
 
 /**
@@ -151,122 +439,38 @@ function findSpecialtyByName(name: string, cache: Map<string, string>): string |
 async function importProcedures() {
   console.log('🚀 Iniciando importação de procedimentos/exames...\n');
 
-  let page = 1;
-  let hasMore = true;
-  let totalImported = 0;
-  let totalUpdated = 0;
-  let totalErrors = 0;
-  let specialtiesNotFound = new Set<string>();
+  const stats = {
+    imported: 0,
+    updated: 0,
+    errors: 0,
+    specialtiesNotFound: new Set<string>(),
+  };
 
   try {
     // Carregar cache de especialidades antes de começar
     const specialtiesCache = await loadSpecialtiesCache();
-    while (hasMore) {
-      console.log(`📄 Buscando página ${page}...`);
 
-      const data = await fetchProceduresPage(page);
-
-      // Se não houver dados ou a lista estiver vazia, parar
-      if (!data || !data.rows || data.rows.length === 0) {
-        console.log('✅ Não há mais páginas para processar.\n');
-        hasMore = false;
-        break;
-      }
-
-      console.log(`   ➡️  Encontrados ${data.rows.length} procedimentos nesta página`);
-
-      // Processar todos os procedimentos em paralelo usando Promise.all
-      const results = await Promise.allSettled(
-        data.rows.map(async (procedure) => {
-          // Buscar a especialidade relacionada usando cache
-          const specialtyId = findSpecialtyByName(procedure.especialidade, specialtiesCache);
-          
-          if (!specialtyId) {
-            specialtiesNotFound.add(procedure.especialidade);
-          }
-
-          // Converter o valor
-          const defaultPrice = parseDecimalValue(procedure.fnd_valor);
-
-          const result = await prisma.procedure.upsert({
-            where: {
-              externalId_sourceSystem: {
-                externalId: procedure.hid_cod_amb,
-                sourceSystem: API_CONFIG.sourceSystem,
-              },
-            },
-            update: {
-              name: procedure.descricao,
-              code: procedure.sigla || null,
-              defaultPrice: defaultPrice,
-              ch: procedure.ch || null,
-              specialtyName: procedure.especialidade,
-              specialtyId: specialtyId,
-              syncedAt: new Date(),
-              rawPayload: procedure,
-            },
-            create: {
-              externalId: procedure.hid_cod_amb,
-              name: procedure.descricao,
-              code: procedure.sigla || null,
-              defaultPrice: defaultPrice,
-              ch: procedure.ch || null,
-              specialtyName: procedure.especialidade,
-              specialtyId: specialtyId,
-              sourceSystem: API_CONFIG.sourceSystem,
-              syncedAt: new Date(),
-              rawPayload: procedure,
-            },
-          });
-
-          return { result, procedure, specialtyId };
-        })
-      );
-
-      // Processar os resultados
-      results.forEach((promiseResult) => {
-        if (promiseResult.status === 'fulfilled') {
-          const { result, procedure, specialtyId } = promiseResult.value;
-          
-          // Verificar se foi criado ou atualizado
-          const isNew = result.createdAt.getTime() === result.updatedAt.getTime();
-          if (isNew) {
-            totalImported++;
-          } else {
-            totalUpdated++;
-          }
-
-          const specialtyWarning = !specialtyId ? ' ⚠️' : '';
-          console.log(`   ✓ ${procedure.descricao} (ID: ${procedure.hid_cod_amb})${specialtyWarning}`);
-        } else {
-          totalErrors++;
-          console.error(`   ✗ Erro ao processar procedimento:`, promiseResult.reason);
-        }
-      });
-
-      console.log(''); // Linha em branco para separar páginas
-      page++;
-
-      // Pequeno delay entre requisições para não sobrecarregar a API
-      await new Promise((resolve) => setTimeout(resolve, 500));
-    }
-
+    // Importar de ambos os endpoints
+    const pagesMedicosEspecialidade = await importMedicosEspecialidadeProcedures(specialtiesCache, stats);
+    const pagesAMB = await importAMBProcedures(specialtiesCache, stats);
     // Resumo final
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     console.log('✅ IMPORTAÇÃO CONCLUÍDA');
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     console.log(`📊 Estatísticas:`);
-    console.log(`   • Total de páginas processadas: ${page - 1}`);
-    console.log(`   • Procedimentos criados: ${totalImported}`);
-    console.log(`   • Procedimentos atualizados: ${totalUpdated}`);
-    console.log(`   • Total processado: ${totalImported + totalUpdated}`);
-    if (totalErrors > 0) {
-      console.log(`   • Erros: ${totalErrors}`);
+    console.log(`   • Páginas processadas (medicos_especialidade): ${pagesMedicosEspecialidade}`);
+    console.log(`   • Páginas processadas (AMB): ${pagesAMB}`);
+    console.log(`   • Total de páginas: ${pagesMedicosEspecialidade + pagesAMB}`);
+    console.log(`   • Procedimentos criados: ${stats.imported}`);
+    console.log(`   • Procedimentos atualizados: ${stats.updated}`);
+    console.log(`   • Total processado: ${stats.imported + stats.updated}`);
+    if (stats.errors > 0) {
+      console.log(`   • Erros: ${stats.errors}`);
     }
     
-    if (specialtiesNotFound.size > 0) {
-      console.log(`\n⚠️  Especialidades não encontradas no banco (${specialtiesNotFound.size}):`);
-      specialtiesNotFound.forEach(name => {
+    if (stats.specialtiesNotFound.size > 0) {
+      console.log(`\n⚠️  Especialidades não encontradas no banco (${stats.specialtiesNotFound.size}):`);
+      stats.specialtiesNotFound.forEach(name => {
         console.log(`   • ${name}`);
       });
       console.log('\n💡 Dica: Execute primeiro o script de importação de especialidades:');

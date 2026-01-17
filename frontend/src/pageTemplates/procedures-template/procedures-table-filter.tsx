@@ -1,7 +1,6 @@
 'use client';
 
-import { useState } from 'react';
-import { Search, X, CalendarIcon } from 'lucide-react';
+import { CalendarIcon } from 'lucide-react';
 import { type DateRange } from 'react-day-picker';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -16,14 +15,19 @@ import {
 } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 
-export function ProceduresTableFilters() {
-  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
+interface ProceduresTableFiltersProps {
+  dateRange: DateRange | undefined;
+  search: string;
+  onDateRangeChange: (range: DateRange | undefined) => void;
+  onSearchChange: (search: string) => void;
+}
 
-  const handleRemoveFilters = () => {
-    setDateRange(undefined);
-    // Aqui você pode adicionar a lógica para limpar outros filtros
-  };
-
+export function ProceduresTableFilters({
+  dateRange,
+  search,
+  onDateRangeChange,
+  onSearchChange,
+}: ProceduresTableFiltersProps) {
   const formatDateRange = (range: DateRange | undefined) => {
     if (!range?.from) {
       return 'Selecione o período';
@@ -45,11 +49,14 @@ export function ProceduresTableFilters() {
   };
 
   return (
-    <form className="flex items-center gap-2">
+    <div className="flex items-center gap-2">
       <span className="text-sm font-semibold">Filtros:</span>
-      <Input placeholder="Nome do procedimento" className="h-8 w-[320px]" />
-      <Input placeholder="Especialidade" className="h-8 w-[200px]" />
-      <Input placeholder="Convênio" className="h-8 w-[200px]" />
+      <Input
+        placeholder="Nome do procedimento"
+        className="h-8 w-[320px]"
+        value={search}
+        onChange={(e) => onSearchChange(e.target.value)}
+      />
 
       <Popover>
         <PopoverTrigger asChild>
@@ -60,6 +67,7 @@ export function ProceduresTableFilters() {
               'h-8 w-[280px] justify-start text-left font-normal',
               !dateRange && 'text-muted-foreground'
             )}
+            type="button"
           >
             <CalendarIcon className="mr-2 h-4 w-4" />
             {formatDateRange(dateRange)}
@@ -69,26 +77,12 @@ export function ProceduresTableFilters() {
           <Calendar
             mode="range"
             selected={dateRange}
-            onSelect={setDateRange}
+            onSelect={onDateRangeChange}
             numberOfMonths={2}
             locale={ptBR}
           />
         </PopoverContent>
       </Popover>
-
-      <Button variant="secondary" size="sm" type="submit">
-        <Search className="mr-2 h-4 w-4" />
-        Filtrar resultados
-      </Button>
-      <Button
-        variant="outline"
-        size="sm"
-        type="button"
-        onClick={handleRemoveFilters}
-      >
-        <X className="mr-2 h-4 w-4" />
-        Remover filtros
-      </Button>
-    </form>
+    </div>
   );
 }

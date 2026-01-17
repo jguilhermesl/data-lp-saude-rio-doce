@@ -19,7 +19,9 @@
     "import:doctors": "tsx src/scripts/import-doctors.ts",
     "import:doctor-specialties": "tsx src/scripts/import-doctor-specialties.ts",
     "import:patients": "tsx src/scripts/import-patients.ts",
-    "import:appointments": "tsx src/scripts/import-appointments.ts"
+    "import:appointments": "tsx src/scripts/import-appointments.ts",
+    "import:appointment-procedures": "tsx src/scripts/import-appointment-procedures.ts",
+    "sync:all": "tsx src/scripts/sync-all.ts"
   },
   "dependencies": {
     "@prisma/client": "^5.17.0",

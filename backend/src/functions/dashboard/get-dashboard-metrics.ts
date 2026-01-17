@@ -102,7 +102,7 @@ export const getDashboardMetrics = async (req: any, res: any) => {
         code: procedure?.code,
         quantitySold: item._sum.quantity || 0,
         timesOrdered: item._count.id,
-        totalRevenue: Number(item._sum.totalPrice || 0),
+        totalRevenue: Number(item._sum.totalRevenue || 0),
       };
     });
 

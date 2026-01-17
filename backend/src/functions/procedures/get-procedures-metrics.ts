@@ -6,115 +6,133 @@ import { prisma } from '@/lib/prisma';
 const querySchema = z.object({
   startDate: z.string().transform((val) => new Date(val)),
   endDate: z.string().transform((val) => new Date(val)),
+  page: z.string().optional().transform((val) => (val ? parseInt(val) : 1)),
+  limit: z.string().optional().transform((val) => (val ? parseInt(val) : 10)),
+  search: z.string().optional(),
 });
 
 export const getProceduresMetrics = async (req: any, res: any) => {
   try {
-    const { startDate, endDate } = querySchema.parse(req.query);
+    const { startDate, endDate, page, limit, search } = querySchema.parse(req.query);
 
-    // Buscar métricas em paralelo
-    const [topSelling, topRevenue, combos] = await Promise.all([
+    // Construir filtros para busca de procedimentos
+    const where: any = {};
+
+    if (search) {
+      where.OR = [
+        { name: { contains: search, mode: 'insensitive' } },
+        { code: { contains: search, mode: 'insensitive' } },
+      ];
+    }
+
+    const skip = (page - 1) * limit;
+
+    // Buscar métricas e procedimentos em paralelo
+    const [topSelling, topRevenue, procedures, total] = await Promise.all([
       procedureDAO.getTopSellingProcedures(startDate, endDate, 10),
       procedureDAO.getTopRevenueProcedures(startDate, endDate, 10),
-      procedureDAO.getProcedureCombos(3),
+      procedureDAO.findMany(
+        where,
+        {
+          _count: {
+            select: {
+              appointmentProcedures: true,
+            },
+          },
+        },
+        { name: 'asc' },
+        skip,
+        limit
+      ),
+      procedureDAO.count(where),
     ]);
 
-    // Buscar nomes dos procedimentos
+    // Buscar nomes dos procedimentos para topSelling e topRevenue
+    // Validar e filtrar apenas UUIDs válidos antes de criar o Set
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    
+    const validTopSellingIds = topSelling
+      .map((p) => p.procedureId)
+      .filter((id) => id && typeof id === 'string' && uuidRegex.test(id));
+    
+    const validTopRevenueIds = topRevenue
+      .map((p) => p.procedureId)
+      .filter((id) => id && typeof id === 'string' && uuidRegex.test(id));
+    
     const allProcedureIds = [
       ...new Set([
-        ...topSelling.map((p) => p.procedureId),
-        ...topRevenue.map((p) => p.procedureId),
+        ...validTopSellingIds,
+        ...validTopRevenueIds,
       ]),
     ];
 
-    const procedures = await prisma.procedure.findMany({
-      where: {
-        id: { in: allProcedureIds },
-      },
-      select: {
-        id: true,
-        name: true,
-        code: true,
-        defaultPrice: true,
-      },
-    });
+    const topProcedures = allProcedureIds.length > 0 
+      ? await prisma.procedure.findMany({
+          where: {
+            id: { in: allProcedureIds },
+          },
+          select: {
+            id: true,
+            name: true,
+            code: true,
+            defaultPrice: true,
+          },
+        })
+      : [];
 
-    const getProcedureDetails = (id: string) => procedures.find((p) => p.id === id);
+    const getProcedureDetails = (id: string) => topProcedures.find((p) => p.id === id);
 
-    // Processar top vendidos
-    const topSellingData = topSelling.map((item) => {
-      const procedure = getProcedureDetails(item.procedureId);
-      return {
-        procedureId: item.procedureId,
-        name: procedure?.name || 'Desconhecido',
-        code: procedure?.code,
-        quantitySold: item._sum.quantity || 0,
-        timesOrdered: item._count.id,
-        totalRevenue: Number(item._sum.totalPrice || 0),
-        averagePrice: Number(item._avg.unitPrice || 0),
-        defaultPrice: procedure?.defaultPrice ? Number(procedure.defaultPrice) : null,
-      };
-    });
-
-    // Processar top faturamento
-    const topRevenueData = topRevenue.map((item) => {
-      const procedure = getProcedureDetails(item.procedureId);
-      return {
-        procedureId: item.procedureId,
-        name: procedure?.name || 'Desconhecido',
-        code: procedure?.code,
-        totalRevenue: Number(item._sum.totalPrice || 0),
-        quantitySold: item._sum.quantity || 0,
-        timesOrdered: item._count.id,
-        averagePrice: Number(item._avg.unitPrice || 0),
-      };
-    });
-
-    // Processar combos
-    const combosData = await Promise.all(
-      (combos as any[]).slice(0, 10).map(async (combo) => {
-        const [proc1, proc2] = await Promise.all([
-          prisma.procedure.findUnique({
-            where: { id: combo.procedure1_id },
-            select: { id: true, name: true },
-          }),
-          prisma.procedure.findUnique({
-            where: { id: combo.procedure2_id },
-            select: { id: true, name: true },
-          }),
-        ]);
-
+    // Processar top vendidos - filtrar apenas itens com procedureId válido
+    const topSellingData = topSelling
+      .filter((item) => item.procedureId && uuidRegex.test(item.procedureId))
+      .map((item) => {
+        const procedure = getProcedureDetails(item.procedureId);
         return {
-          procedure1: {
-            id: proc1?.id,
-            name: proc1?.name || 'Desconhecido',
-          },
-          procedure2: {
-            id: proc2?.id,
-            name: proc2?.name || 'Desconhecido',
-          },
-          occurrences: combo.occurrences,
+          procedureId: item.procedureId,
+          name: procedure?.name || 'Desconhecido',
+          code: procedure?.code,
+          quantitySold: item._sum.quantity || 0,
+          timesOrdered: item._count.id,
+          totalRevenue: Number(item._sum.totalRevenue || 0),
+          averagePrice: Number(item._avg.paidValue || 0),
+          defaultPrice: procedure?.defaultPrice ? Number(procedure.defaultPrice) : null,
         };
-      })
-    );
+      });
 
-    // Calcular métricas gerais
-    const totalRevenue = topRevenueData.reduce((sum, p) => sum + p.totalRevenue, 0);
+    // Processar top faturamento - filtrar apenas itens com procedureId válido
+    const topRevenueData = topRevenue
+      .filter((item) => item.procedureId && uuidRegex.test(item.procedureId))
+      .map((item) => {
+        const procedure = getProcedureDetails(item.procedureId);
+        return {
+          procedureId: item.procedureId,
+          name: procedure?.name || 'Desconhecido',
+          code: procedure?.code,
+          totalRevenue: Number(item._sum.totalRevenue || 0),
+          quantitySold: item._sum.quantity || 0,
+          timesOrdered: item._count.id,
+          averagePrice: Number(item._avg.paidValue || 0),
+          defaultPrice: procedure?.defaultPrice ? Number(procedure.defaultPrice) : null,
+        };
+      });
+
+    // Calcular total de procedimentos (sem filtros de busca)
     const totalProcedures = await procedureDAO.count();
-    const avgRevenuePerProcedure = topRevenueData.length > 0 ? totalRevenue / topRevenueData.length : 0;
 
     // Resposta
     const response = {
       summary: {
         totalProcedures,
-        topSellingProcedure: topSellingData[0] || null,
-        topRevenueProcedure: topRevenueData[0] || null,
-        totalRevenueFromTop10: totalRevenue,
-        avgRevenuePerProcedure,
       },
       topSelling: topSellingData,
       topRevenue: topRevenueData,
-      combos: combosData,
+      procedures: procedures,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
       period: {
         startDate,
         endDate,

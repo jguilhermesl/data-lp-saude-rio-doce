@@ -164,8 +164,8 @@ model Appointment {
   examsRaw String? @db.Text
 
   // Chaves estrangeiras
-  patientId         String
-  doctorId          String
+  patientId         String?
+  doctorId          String?
   responsibleUserId String?
   specialtyId       String? // opcional: especialidade principal do atendimento
 
@@ -176,8 +176,8 @@ model Appointment {
   updatedAt  DateTime  @updatedAt
 
   // Relações
-  patient               Patient                @relation(fields: [patientId], references: [id], onDelete: Cascade)
-  doctor                Doctor                 @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  patient               Patient?               @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  doctor                Doctor?                @relation(fields: [doctorId], references: [id], onDelete: Cascade)
   responsibleUser       User?                  @relation(fields: [responsibleUserId], references: [id], onDelete: SetNull)
   specialty             Specialty?             @relation(fields: [specialtyId], references: [id], onDelete: SetNull)
   appointmentProcedures AppointmentProcedure[]
@@ -246,8 +246,6 @@ model AppointmentProcedure {
 
   // Dados opcionais do procedimento no atendimento
   quantity   Int?     @default(1)
-  unitPrice  Decimal? @db.Decimal(10, 2)
-  totalPrice Decimal? @db.Decimal(10, 2)
 
   // Campos técnicos
   createdAt DateTime @default(now())

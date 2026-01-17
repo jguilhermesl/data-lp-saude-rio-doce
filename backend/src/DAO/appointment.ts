@@ -111,14 +111,24 @@ export class AppointmentDAO {
    */
   async getByInsurance(startDate: Date, endDate: Date) {
     try {
-      return await prisma.appointment.groupBy({
-        by: ['insuranceName'],
-        where: {
-          appointmentDate: { gte: startDate, lte: endDate },
-        },
-        _sum: { examValue: true, paidValue: true },
-        _count: { id: true },
-      });
+      return await prisma.$queryRaw<Array<{
+        insuranceName: string;
+        _sum: { examValue: number | null; paidValue: number | null };
+        _count: { id: number };
+      }>>`
+        SELECT 
+          "insuranceName",
+          json_build_object(
+            'examValue', SUM("examValue"),
+            'paidValue', SUM("paidValue")
+          ) as "_sum",
+          json_build_object('id', COUNT(*)::int) as "_count"
+        FROM appointments
+        WHERE "appointmentDate" BETWEEN ${startDate} AND ${endDate}
+          AND "insuranceName" IS NOT NULL
+        GROUP BY "insuranceName"
+        ORDER BY "insuranceName"
+      `;
     } catch (error) {
       console.error('Error in AppointmentDAO.getByInsurance:', error);
       throw error;
@@ -130,15 +140,26 @@ export class AppointmentDAO {
    */
   async getByDoctor(startDate: Date, endDate: Date) {
     try {
-      return await prisma.appointment.groupBy({
-        by: ['doctorId'],
-        where: {
-          appointmentDate: { gte: startDate, lte: endDate },
-        },
-        _sum: { examValue: true, paidValue: true },
-        _count: { id: true },
-        _avg: { examValue: true },
-      });
+      return await prisma.$queryRaw<Array<{
+        doctorId: string;
+        _sum: { examValue: number | null; paidValue: number | null };
+        _count: { id: number };
+        _avg: { examValue: number | null };
+      }>>`
+        SELECT 
+          "doctorId",
+          json_build_object(
+            'examValue', SUM("examValue"),
+            'paidValue', SUM("paidValue")
+          ) as "_sum",
+          json_build_object('id', COUNT(*)::int) as "_count",
+          json_build_object('examValue', AVG("examValue")) as "_avg"
+        FROM appointments
+        WHERE "appointmentDate" BETWEEN ${startDate} AND ${endDate}
+          AND "doctorId" IS NOT NULL
+        GROUP BY "doctorId"
+        ORDER BY "doctorId"
+      `;
     } catch (error) {
       console.error('Error in AppointmentDAO.getByDoctor:', error);
       throw error;

@@ -12,6 +12,7 @@ import { routerPatients } from "./functions/patients/routes";
 import { routerProcedures } from "./functions/procedures/routes";
 import { routerSpecialties } from "./functions/specialties/routes";
 import { routerDashboard } from "./functions/dashboard/routes";
+import { routerUsers } from "./functions/users/routes";
 
 const PORT = env.PORT;
 const app = express();
@@ -22,6 +23,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Registrar todas as rotas
+app.use(routerUsers);
 app.use(routerAuth);
 app.use(routerAppointments);
 app.use(routerDoctors);

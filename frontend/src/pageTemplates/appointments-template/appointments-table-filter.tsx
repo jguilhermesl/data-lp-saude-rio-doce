@@ -16,12 +16,26 @@ import {
 } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 
-export function AppointmentsTableFilters() {
-  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
+interface AppointmentsTableFiltersProps {
+  dateRange: DateRange | undefined;
+  setDateRange: (range: DateRange | undefined) => void;
+  search: string;
+  onSearch: (search: string) => void;
+  onRemoveFilters: () => void;
+}
 
-  const handleRemoveFilters = () => {
-    setDateRange(undefined);
-    // TODO: Adicionar lógica para limpar outros filtros
+export function AppointmentsTableFilters({
+  dateRange,
+  setDateRange,
+  search,
+  onSearch,
+  onRemoveFilters,
+}: AppointmentsTableFiltersProps) {
+  const [localSearch, setLocalSearch] = useState(search);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSearch(localSearch);
   };
 
   const formatDateRange = (range: DateRange | undefined) => {
@@ -45,12 +59,9 @@ export function AppointmentsTableFilters() {
   };
 
   return (
-    <form className="flex flex-col gap-2">
+    <form onSubmit={handleSubmit} className="flex flex-col gap-2">
       <div className="flex items-center gap-2 flex-wrap">
         <span className="text-sm font-semibold">Filtros:</span>
-
-        {/* Especialidade */}
-        <Input placeholder="Especialidade" className="h-8 w-[200px]" />
 
         {/* Data (intervalo) */}
         <Popover>
@@ -78,27 +89,13 @@ export function AppointmentsTableFilters() {
           </PopoverContent>
         </Popover>
 
-        {/* Paciente */}
-        <Input placeholder="Paciente" className="h-8 w-[200px]" />
-
-        {/* Médico */}
-        <Input placeholder="Médico" className="h-8 w-[200px]" />
-      </div>
-
-      <div className="flex items-center gap-2 flex-wrap">
-        <span className="text-sm font-semibold invisible">Filtros:</span>
-
-        {/* Funcionário responsável */}
-        <Input
-          placeholder="Funcionário responsável"
-          className="h-8 w-[200px]"
+        {/* Busca geral (paciente, médico, convênio) */}
+        <Input 
+          placeholder="Buscar por paciente, médico ou convênio" 
+          className="h-8 w-[300px]" 
+          value={localSearch}
+          onChange={(e) => setLocalSearch(e.target.value)}
         />
-
-        {/* Convênio */}
-        <Input placeholder="Convênio" className="h-8 w-[200px]" />
-
-        {/* Status do atendimento */}
-        <Input placeholder="Status" className="h-8 w-[200px]" />
 
         <Button variant="secondary" size="sm" type="submit">
           <Search className="mr-2 h-4 w-4" />
@@ -108,7 +105,10 @@ export function AppointmentsTableFilters() {
           variant="outline"
           size="sm"
           type="button"
-          onClick={handleRemoveFilters}
+          onClick={() => {
+            setLocalSearch('');
+            onRemoveFilters();
+          }}
         >
           <X className="mr-2 h-4 w-4" />
           Remover filtros

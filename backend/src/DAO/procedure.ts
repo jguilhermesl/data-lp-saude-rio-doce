@@ -72,21 +72,41 @@ export class ProcedureDAO {
    */
   async getTopSellingProcedures(startDate: Date, endDate: Date, limit: number = 10) {
     try {
-      return await prisma.appointmentProcedure.groupBy({
-        by: ['procedureId'],
-        where: {
-          appointment: {
-            appointmentDate: { gte: startDate, lte: endDate },
-          },
+      // Buscar procedimentos com suas quantidades e valores dos appointments
+      const result = await prisma.$queryRaw<Array<{
+        procedureId: string;
+        quantity: bigint;
+        timesOrdered: bigint;
+        totalRevenue: number;
+        averagePrice: number;
+      }>>`
+        SELECT 
+          ap."procedureId"::text,
+          COALESCE(SUM(ap.quantity), 0)::bigint as quantity,
+          COUNT(ap.id)::bigint as "timesOrdered",
+          COALESCE(SUM(a."paidValue"), 0)::float as "totalRevenue",
+          COALESCE(AVG(a."paidValue"), 0)::float as "averagePrice"
+        FROM appointment_procedures ap
+        JOIN appointments a ON ap."appointmentId" = a.id
+        WHERE a."appointmentDate" BETWEEN ${startDate} AND ${endDate}
+        GROUP BY ap."procedureId"
+        ORDER BY "timesOrdered" DESC
+        LIMIT ${limit}
+      `;
+      
+      return result.map(item => ({
+        procedureId: item.procedureId,
+        _sum: {
+          quantity: Number(item.quantity),
+          totalRevenue: item.totalRevenue,
         },
-        _sum: { totalPrice: true, quantity: true },
-        _count: { id: true },
-        _avg: { unitPrice: true },
-        orderBy: {
-          _count: { id: 'desc' },
+        _count: {
+          id: Number(item.timesOrdered),
         },
-        take: limit,
-      });
+        _avg: {
+          paidValue: item.averagePrice,
+        },
+      }));
     } catch (error) {
       console.error('Error in ProcedureDAO.getTopSellingProcedures:', error);
       throw error;
@@ -98,21 +118,41 @@ export class ProcedureDAO {
    */
   async getTopRevenueProcedures(startDate: Date, endDate: Date, limit: number = 10) {
     try {
-      return await prisma.appointmentProcedure.groupBy({
-        by: ['procedureId'],
-        where: {
-          appointment: {
-            appointmentDate: { gte: startDate, lte: endDate },
-          },
+      // Buscar procedimentos ordenados por faturamento (soma do paidValue dos appointments)
+      const result = await prisma.$queryRaw<Array<{
+        procedureId: string;
+        quantity: bigint;
+        timesOrdered: bigint;
+        totalRevenue: number;
+        averagePrice: number;
+      }>>`
+        SELECT 
+          ap."procedureId"::text,
+          COALESCE(SUM(ap.quantity), 0)::bigint as quantity,
+          COUNT(ap.id)::bigint as "timesOrdered",
+          COALESCE(SUM(a."paidValue"), 0)::float as "totalRevenue",
+          COALESCE(AVG(a."paidValue"), 0)::float as "averagePrice"
+        FROM appointment_procedures ap
+        JOIN appointments a ON ap."appointmentId" = a.id
+        WHERE a."appointmentDate" BETWEEN ${startDate} AND ${endDate}
+        GROUP BY ap."procedureId"
+        ORDER BY "totalRevenue" DESC
+        LIMIT ${limit}
+      `;
+      
+      return result.map(item => ({
+        procedureId: item.procedureId,
+        _sum: {
+          quantity: Number(item.quantity),
+          totalRevenue: item.totalRevenue,
         },
-        _sum: { totalPrice: true, quantity: true },
-        _count: { id: true },
-        _avg: { unitPrice: true },
-        orderBy: {
-          _sum: { totalPrice: 'desc' },
+        _count: {
+          id: Number(item.timesOrdered),
         },
-        take: limit,
-      });
+        _avg: {
+          paidValue: item.averagePrice,
+        },
+      }));
     } catch (error) {
       console.error('Error in ProcedureDAO.getTopRevenueProcedures:', error);
       throw error;
@@ -149,24 +189,32 @@ export class ProcedureDAO {
    */
   async getProcedureStats(procedureId: string, startDate: Date, endDate: Date) {
     try {
-      const stats = await prisma.appointmentProcedure.aggregate({
-        where: {
-          procedureId,
-          appointment: {
-            appointmentDate: { gte: startDate, lte: endDate },
-          },
-        },
-        _sum: { totalPrice: true, quantity: true },
-        _avg: { unitPrice: true },
-        _count: { id: true },
-      });
+      // Usar query raw para buscar estatísticas do procedimento
+      const result = await prisma.$queryRaw<Array<{
+        quantity: bigint;
+        timesOrdered: bigint;
+        totalRevenue: number;
+        averagePrice: number;
+      }>>`
+        SELECT 
+          COALESCE(SUM(ap.quantity), 0)::bigint as quantity,
+          COUNT(ap.id)::bigint as "timesOrdered",
+          COALESCE(SUM(a."paidValue"), 0)::float as "totalRevenue",
+          COALESCE(AVG(a."paidValue"), 0)::float as "averagePrice"
+        FROM appointment_procedures ap
+        JOIN appointments a ON ap."appointmentId" = a.id
+        WHERE ap."procedureId" = ${procedureId}
+          AND a."appointmentDate" BETWEEN ${startDate} AND ${endDate}
+      `;
 
+      const stats = result[0];
+      
       return {
         procedureId,
-        totalRevenue: Number(stats._sum.totalPrice || 0),
-        totalQuantity: stats._sum.quantity || 0,
-        timesOrdered: stats._count.id,
-        averagePrice: Number(stats._avg.unitPrice || 0),
+        totalRevenue: stats?.totalRevenue || 0,
+        totalQuantity: Number(stats?.quantity || 0),
+        timesOrdered: Number(stats?.timesOrdered || 0),
+        averagePrice: stats?.averagePrice || 0,
       };
     } catch (error) {
       console.error('Error in ProcedureDAO.getProcedureStats:', error);
@@ -239,7 +287,7 @@ export class ProcedureDAO {
           a."doctorId",
           ap."procedureId",
           COUNT(*)::int as times_ordered,
-          SUM(ap."totalPrice")::float as total_revenue
+          SUM(a."paidValue")::float as total_revenue
         FROM appointment_procedures ap
         JOIN appointments a ON ap."appointmentId" = a.id
         WHERE a."appointmentDate" BETWEEN ${startDate} AND ${endDate}

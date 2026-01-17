@@ -1,105 +1,119 @@
 import { handleErrors } from '@/utils/handle-errors';
 import { z } from 'zod';
 import { appointmentDAO } from '@/DAO/appointment';
+import { prisma } from '@/lib/prisma';
 
 const querySchema = z.object({
   startDate: z.string().transform((val) => new Date(val)),
   endDate: z.string().transform((val) => new Date(val)),
+  page: z.string().optional().transform((val) => (val ? parseInt(val) : 1)),
+  limit: z.string().optional().transform((val) => (val ? parseInt(val) : 100)),
+  search: z.string().optional(),
   doctorId: z.string().optional(),
   patientId: z.string().optional(),
   specialtyId: z.string().optional(),
   insuranceName: z.string().optional(),
-  groupBy: z.enum(['day', 'month', 'year']).optional().default('month'),
 });
 
 export const getAppointmentsMetrics = async (req: any, res: any) => {
   try {
-    const { startDate, endDate, doctorId, patientId, specialtyId, insuranceName, groupBy } =
+    const { startDate, endDate, page, limit, search, doctorId, patientId, specialtyId, insuranceName } =
       querySchema.parse(req.query);
 
-    // Construir filtros
-    const filters: any = {};
-    if (doctorId) filters.doctorId = doctorId;
-    if (patientId) filters.patientId = patientId;
-    if (specialtyId) filters.specialtyId = specialtyId;
-    if (insuranceName) filters.insuranceName = insuranceName;
+    // Construir filtros para busca de atendimentos
+    const where: any = {
+      appointmentDate: { gte: startDate, lte: endDate },
+    };
 
-    // Buscar todas as métricas em paralelo
+    if (doctorId) where.doctorId = doctorId;
+    if (patientId) where.patientId = patientId;
+    if (specialtyId) where.specialtyId = specialtyId;
+    if (insuranceName) where.insuranceName = insuranceName;
+
+    if (search) {
+      where.OR = [
+        { patient: { fullName: { contains: search, mode: 'insensitive' } } },
+        { doctor: { name: { contains: search, mode: 'insensitive' } } },
+        { insuranceName: { contains: search, mode: 'insensitive' } },
+      ];
+    }
+
+    const skip = (page - 1) * limit;
+
+    // Buscar atendimentos e métricas em paralelo
     const [
+      appointments,
+      total,
       financial,
-      paymentStatus,
-      byInsurance,
+      todayAppointments,
       byDoctor,
       timeSeries,
-      todayAppointments,
-      weekAppointments,
     ] = await Promise.all([
-      appointmentDAO.getFinancialMetrics(startDate, endDate, filters),
-      appointmentDAO.getPaymentStatus(startDate, endDate),
-      appointmentDAO.getByInsurance(startDate, endDate),
-      appointmentDAO.getByDoctor(startDate, endDate),
-      appointmentDAO.getTimeSeriesData(startDate, endDate, groupBy),
+      prisma.appointment.findMany({
+        where,
+        include: {
+          patient: {
+            select: {
+              id: true,
+              fullName: true,
+              cpf: true,
+              insuranceName: true,
+            },
+          },
+          doctor: {
+            select: {
+              id: true,
+              name: true,
+              crm: true,
+            },
+          },
+          specialty: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+          appointmentProcedures: {
+            include: {
+              procedure: {
+                select: {
+                  id: true,
+                  name: true,
+                  code: true,
+                },
+              },
+            },
+          },
+        },
+        orderBy: { appointmentDate: 'desc' },
+        skip,
+        take: limit,
+      }),
+      appointmentDAO.count(where),
+      appointmentDAO.getFinancialMetrics(startDate, endDate, {}),
       appointmentDAO.getTodayAppointments(),
-      appointmentDAO.getWeekAppointments(),
+      appointmentDAO.getByDoctor(startDate, endDate),
+      appointmentDAO.getTimeSeriesData(startDate, endDate, 'month'),
     ]);
 
-    // Calcular métricas derivadas
-    const totalRevenue = Number(financial._sum.examValue || 0);
-    const receivedRevenue = Number(financial._sum.paidValue || 0);
-    const pendingRevenue = totalRevenue - receivedRevenue;
-    const totalAppointments = financial._count.id;
-    const averageTicket = Number(financial._avg.examValue || 0);
-
-    // Calcular taxas de pagamento e inadimplência
-    const paidCount = paymentStatus.find((p) => p.paymentDone)?._count.id || 0;
-    const unpaidCount = paymentStatus.find((p) => !p.paymentDone)?._count.id || 0;
-    const paymentRate = totalAppointments > 0 ? (paidCount / totalAppointments) * 100 : 0;
-    const defaultRate = totalAppointments > 0 ? (unpaidCount / totalAppointments) * 100 : 0;
-
-    // Calcular crescimento (comparando com período anterior)
-    const daysDiff = Math.ceil(
-      (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
-    );
-    const previousStartDate = new Date(startDate);
-    previousStartDate.setDate(previousStartDate.getDate() - daysDiff);
-    const previousEndDate = new Date(startDate);
-    previousEndDate.setDate(previousEndDate.getDate() - 1);
-
-    const previousFinancial = await appointmentDAO.getFinancialMetrics(
-      previousStartDate,
-      previousEndDate,
-      filters
-    );
-
-    const previousRevenue = Number(previousFinancial._sum.examValue || 0);
-    const revenueGrowth =
-      previousRevenue > 0 ? ((totalRevenue - previousRevenue) / previousRevenue) * 100 : 0;
-
-    const previousAppointments = previousFinancial._count.id;
-    const appointmentsGrowth =
-      previousAppointments > 0
-        ? ((totalAppointments - previousAppointments) / previousAppointments) * 100
-        : 0;
-
-    // Processar dados por convênio
-    const byInsuranceData = byInsurance.map((item) => ({
-      insuranceName: item.insuranceName || 'Particular',
-      totalRevenue: Number(item._sum.examValue || 0),
-      receivedRevenue: Number(item._sum.paidValue || 0),
-      pendingRevenue: Number(item._sum.examValue || 0) - Number(item._sum.paidValue || 0),
-      appointmentCount: item._count.id,
-      averageTicket:
-        item._count.id > 0 ? Number(item._sum.examValue || 0) / item._count.id : 0,
-    }));
-
     // Processar dados por médico
-    const byDoctorData = byDoctor.map((item) => ({
-      doctorId: item.doctorId,
-      totalRevenue: Number(item._sum.examValue || 0),
-      receivedRevenue: Number(item._sum.paidValue || 0),
-      appointmentCount: item._count.id,
-      averageTicket: Number(item._avg.examValue || 0),
-    }));
+    const byDoctorData = await Promise.all(
+      byDoctor.map(async (item) => {
+        const doctor = await prisma.doctor.findUnique({
+          where: { id: item.doctorId },
+          select: { id: true, name: true, crm: true },
+        });
+
+        return {
+          doctorId: item.doctorId,
+          name: doctor?.name || 'Desconhecido',
+          crm: doctor?.crm,
+          appointmentCount: item._count.id,
+          totalRevenue: Number(item._sum.examValue || 0),
+          averageTicket: Number(item._avg.examValue || 0),
+        };
+      })
+    );
 
     // Formatar série temporal
     const timeSeriesFormatted = (timeSeries as any[]).map((item: any) => ({
@@ -109,32 +123,55 @@ export const getAppointmentsMetrics = async (req: any, res: any) => {
       received: Number(item.received || 0),
     }));
 
-    // Montar resposta
-    const metrics = {
+    // Calcular métricas do período
+    const totalRevenue = Number(financial._sum.examValue || 0);
+    const averageTicket = Number(financial._avg.examValue || 0);
+    const totalAppointmentsPeriod = financial._count.id;
+
+    // Resposta
+    const response = {
       summary: {
+        totalAppointments: totalAppointmentsPeriod, // Total no período selecionado
         totalRevenue,
-        receivedRevenue,
-        pendingRevenue,
-        totalAppointments,
         averageTicket,
-        paymentRate,
-        defaultRate,
-        revenueGrowth,
-        appointmentsGrowth,
         todayAppointments,
-        weekAppointments,
       },
-      byInsurance: byInsuranceData,
       byDoctor: byDoctorData,
       timeSeries: timeSeriesFormatted,
+      appointments: appointments.map((apt) => ({
+        id: apt.id,
+        externalId: apt.externalId,
+        appointmentDate: apt.appointmentDate,
+        appointmentTime: apt.appointmentTime,
+        appointmentAt: apt.appointmentAt,
+        insuranceName: apt.insuranceName,
+        examsRaw: apt.examsRaw,
+        examValue: apt.examValue ? Number(apt.examValue) : null,
+        paidValue: apt.paidValue ? Number(apt.paidValue) : null,
+        paymentDone: apt.paymentDone,
+        patient: apt.patient,
+        doctor: apt.doctor,
+        specialty: apt.specialty,
+        procedures: apt.appointmentProcedures.map((ap) => ({
+          id: ap.procedure.id,
+          name: ap.procedure.name,
+          code: ap.procedure.code,
+          quantity: ap.quantity,
+        })),
+      })),
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
       period: {
         startDate,
         endDate,
-        days: daysDiff,
       },
     };
 
-    return res.status(200).send({ data: metrics });
+    return res.status(200).send({ data: response });
   } catch (err) {
     const errorMessage = handleErrors(err);
     return res.status(500).send({ message: errorMessage });

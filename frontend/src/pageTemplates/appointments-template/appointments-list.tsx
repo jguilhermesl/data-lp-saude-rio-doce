@@ -1,59 +1,145 @@
 import { Table } from '@/components/ui/table';
 import { AppointmentsTableRow } from './appointments-table-row';
+import { Appointment } from '@/services/api/appointments';
+import { Button } from '@/components/ui/button';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
-export const AppointmentsList = () => {
-  // TODO: Replace with real API data
-  const mockAppointments = Array.from({ length: 10 }).map((_, i) => ({
-    hii_cod_atendimento: `${8077 + i}`,
-    cod_atendimento: `${8077 + i}`,
-    hid_status: 'F',
-    status: 'F',
-    status_obs: 'NAO DESTACAR',
-    txt_usuario_responsavel: 'PATRICIA OLIVEIRA',
-    paciente: `PACIENTE ${i + 1}`,
-    medico: 'ANDRE FELIPE DA SILVA MACEDO',
-    dat_atendimento: '03/12/2025',
-    hora_atendimento: '13:48:51',
-    dat_criacao: '03/12/2025',
-    convenio: 'PARTICULAR',
-    vlr_exames: '140.00',
-    vlr_pago: '140.00',
-    exames: 'CONSULTA CARDIOLOGISTA',
-    pagamentos_realizados: 'CARTAO DEBITO (140.00)',
-    statusAtend:
-      '<span class="btn btn-success btn-sm"><strong>FECHADO</strong></span>',
-  }));
+interface AppointmentsListProps {
+  appointments: Appointment[];
+  pagination?: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+  isLoading: boolean;
+  error: Error | null;
+  onPageChange: (page: number) => void;
+}
 
+export const AppointmentsList = ({
+  appointments,
+  pagination,
+  isLoading,
+  error,
+  onPageChange,
+}: AppointmentsListProps) => {
   const headers = [
     'Data',
     'Hora',
+    'Procedimento(s)',
     'Paciente',
     'Médico',
-    'Especialidade',
     'Convênio',
-    'Procedimento(s)',
-    'Valor dos Exames',
     'Valor Pago',
-    'Forma(s) de Pagamento',
-    'Usuário Responsável',
-    'Status',
     'Ações',
   ];
 
+  if (isLoading) {
+    return (
+      <div className="border rounded-md overflow-x-auto">
+        <div className="p-8 text-center">
+          <p className="text-gray-500">Carregando atendimentos...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="border rounded-md overflow-x-auto">
+        <div className="p-8 text-center">
+          <p className="text-red-500">Erro ao carregar atendimentos: {error.message}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!appointments || appointments.length === 0) {
+    return (
+      <div className="border rounded-md overflow-x-auto">
+        <div className="p-8 text-center">
+          <p className="text-gray-500">Nenhum atendimento encontrado.</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div>
+    <div className="space-y-4">
       <div className="border rounded-md overflow-x-auto">
         <Table headers={headers}>
-          {mockAppointments.map((appointment) => {
+          {appointments.map((appointment) => {
             return (
               <AppointmentsTableRow
-                key={appointment.cod_atendimento}
+                key={appointment.id}
                 appointment={appointment}
               />
             );
           })}
         </Table>
       </div>
+
+      {/* Paginação */}
+      {pagination && pagination.totalPages > 1 && (
+        <div className="flex items-center justify-between">
+          <div className="text-sm text-gray-500">
+            Mostrando {((pagination.page - 1) * pagination.limit) + 1} a{' '}
+            {Math.min(pagination.page * pagination.limit, pagination.total)} de{' '}
+            {pagination.total} atendimentos
+          </div>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onPageChange(pagination.page - 1)}
+              disabled={pagination.page === 1}
+            >
+              <ChevronLeft className="h-4 w-4 mr-1" />
+              Anterior
+            </Button>
+            <div className="flex items-center gap-1">
+              {Array.from({ length: pagination.totalPages }, (_, i) => i + 1)
+                .filter((page) => {
+                  // Mostrar primeira, última e páginas próximas à atual
+                  return (
+                    page === 1 ||
+                    page === pagination.totalPages ||
+                    (page >= pagination.page - 1 && page <= pagination.page + 1)
+                  );
+                })
+                .map((page, index, array) => {
+                  // Adicionar "..." entre páginas não consecutivas
+                  const prevPage = array[index - 1];
+                  const showEllipsis = prevPage && page - prevPage > 1;
+
+                  return (
+                    <div key={page} className="flex items-center">
+                      {showEllipsis && <span className="px-2">...</span>}
+                      <Button
+                        variant={page === pagination.page ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => onPageChange(page)}
+                        className="w-8 h-8 p-0"
+                      >
+                        {page}
+                      </Button>
+                    </div>
+                  );
+                })}
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onPageChange(pagination.page + 1)}
+              disabled={pagination.page === pagination.totalPages}
+            >
+              Próxima
+              <ChevronRight className="h-4 w-4 ml-1" />
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

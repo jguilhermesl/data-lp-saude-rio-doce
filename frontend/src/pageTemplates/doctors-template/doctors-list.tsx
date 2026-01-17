@@ -1,16 +1,13 @@
 import { Table } from '@/components/ui/table/table';
 import { DoctorsTableRow } from './doctors-table-row';
+import { DoctorMetrics } from '@/services/api/doctors';
 
-export const DoctorsList = () => {
-  // TODO: Replace with real API data
-  const mockDoctors = Array.from({ length: 10 }).map((_, i) => ({
-    id: `doctor-${i + 1}`,
-    externalId: `0321cjlas3921${i}`,
-    name: `Médico ${i + 1}`,
-    status: 'Ativo',
-    revenue: 49900 + i * 1000,
-  }));
+interface DoctorsListProps {
+  doctors: DoctorMetrics[];
+  isLoading: boolean;
+}
 
+export const DoctorsList = ({ doctors, isLoading }: DoctorsListProps) => {
   const headers = [
     'Médico',
     'Especialidade',
@@ -20,12 +17,51 @@ export const DoctorsList = () => {
     '',
   ];
 
+  if (isLoading) {
+    return (
+      <div className="border rounded-md">
+        <Table headers={headers}>
+          {Array.from({ length: 5 }).map((_, i) => (
+            <tr key={i} className="border-b animate-pulse">
+              <td className="px-4 py-3">
+                <div className="h-4 bg-gray-200 rounded w-32"></div>
+              </td>
+              <td className="px-4 py-3">
+                <div className="h-4 bg-gray-200 rounded w-24"></div>
+              </td>
+              <td className="px-4 py-3">
+                <div className="h-4 bg-gray-200 rounded w-20"></div>
+              </td>
+              <td className="px-4 py-3">
+                <div className="h-4 bg-gray-200 rounded w-16"></div>
+              </td>
+              <td className="px-4 py-3">
+                <div className="h-4 bg-gray-200 rounded w-20"></div>
+              </td>
+              <td className="px-4 py-3">
+                <div className="h-4 bg-gray-200 rounded w-8"></div>
+              </td>
+            </tr>
+          ))}
+        </Table>
+      </div>
+    );
+  }
+
+  if (doctors.length === 0) {
+    return (
+      <div className="border rounded-md p-8 text-center">
+        <p className="text-gray-500">Nenhum médico encontrado no período.</p>
+      </div>
+    );
+  }
+
   return (
     <div>
       <div className="border rounded-md">
         <Table headers={headers}>
-          {mockDoctors.map((doctor) => {
-            return <DoctorsTableRow key={doctor.id} doctor={doctor} />;
+          {doctors.map((doctor) => {
+            return <DoctorsTableRow key={doctor.doctorId} doctor={doctor} />;
           })}
         </Table>
       </div>

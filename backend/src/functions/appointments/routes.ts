@@ -1,6 +1,5 @@
 import { Router } from 'express';
 import { authMiddleware } from '@/middlewares/auth-middleware';
-import { getAllAppointments } from './get-all-appointments';
 import { getAppointmentById } from './get-appointment-by-id';
 import { getAppointmentsMetrics } from './get-appointments-metrics';
 
@@ -10,7 +9,6 @@ const routerAppointments = Router();
 // routerAppointments.use(authMiddleware);
 
 // Rotas de listagem e detalhes
-routerAppointments.get('/appointments', (req, res) => getAllAppointments(req, res));
 routerAppointments.get('/appointments/metrics/summary', (req, res) =>
   getAppointmentsMetrics(req, res)
 );

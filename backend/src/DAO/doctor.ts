@@ -92,7 +92,6 @@ export class DoctorDAO {
                 select: {
                   id: true,
                   name: true,
-                  acronym: true,
                 },
               },
             },

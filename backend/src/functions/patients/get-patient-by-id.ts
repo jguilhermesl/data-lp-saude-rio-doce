@@ -24,7 +24,6 @@ export const getPatientById = async (req: any, res: any) => {
             select: {
               id: true,
               name: true,
-              acronym: true,
             },
           },
           appointmentProcedures: {

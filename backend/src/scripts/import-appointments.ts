@@ -55,7 +55,7 @@ const API_CONFIG = {
     'Cookie': 'dotproject=hllhp910t3ar325ms9m3tq7el6; PHPSESSID=kd2rmta1sup8elfvpcsr04nrq4',
   },
   sourceSystem: 's2web',
-  rowsPerPage: 50,
+  rowsPerPage: 100,
 };
 
 /**
@@ -268,8 +268,8 @@ async function importAppointments() {
       const results = await Promise.allSettled(
         data.rows.map(async (appointment) => {
           // Buscar médico e paciente
-          const doctorId = doctorsCache.get(appointment.medico.toUpperCase());
-          const patientId = patientsCache.get(appointment.paciente.toUpperCase());
+          const doctorId = doctorsCache.get(appointment.medico.toUpperCase()) || null;
+          const patientId = patientsCache.get(appointment.paciente.toUpperCase()) || null;
 
           if (!doctorId) {
             doctorsNotFound.add(appointment.medico);
@@ -277,11 +277,6 @@ async function importAppointments() {
 
           if (!patientId) {
             patientsNotFound.add(appointment.paciente);
-          }
-
-          // Se não encontrar médico ou paciente, pular
-          if (!doctorId || !patientId) {
-            return { appointment, skipped: true };
           }
 
           // Converter datas e valores
@@ -300,6 +295,20 @@ async function importAppointments() {
             };
           }
 
+          // Preparar dados para upsert
+          const appointmentData = {
+            appointmentDate,
+            appointmentTime: appointment.hora_atendimento || null,
+            createdDate,
+            insuranceName: appointment.convenio || null,
+            examValue,
+            paidValue,
+            paymentDone,
+            examsRaw: appointment.exames || null,
+            syncedAt: new Date(),
+            rawPayload: appointment,
+          };
+
           const result = await prisma.appointment.upsert({
             where: {
               externalId_sourceSystem: {
@@ -308,46 +317,29 @@ async function importAppointments() {
               },
             },
             update: {
-              appointmentDate,
-              appointmentTime: appointment.hora_atendimento || null,
-              createdDate,
-              insuranceName: appointment.convenio || null,
-              examValue,
-              paidValue,
-              paymentDone,
-              examsRaw: appointment.exames || null,
-              patientId,
-              doctorId,
-              syncedAt: new Date(),
-              rawPayload: appointment,
+              ...appointmentData,
+              ...(patientId && { patientId }),
+              ...(doctorId && { doctorId }),
             },
             create: {
               externalId: appointment.hii_cod_atendimento,
-              appointmentDate,
-              appointmentTime: appointment.hora_atendimento || null,
-              createdDate,
-              insuranceName: appointment.convenio || null,
-              examValue,
-              paidValue,
-              paymentDone,
-              examsRaw: appointment.exames || null,
-              patientId,
-              doctorId,
               sourceSystem: API_CONFIG.sourceSystem,
-              syncedAt: new Date(),
-              rawPayload: appointment,
+              ...appointmentData,
+              ...(patientId && { patientId }),
+              ...(doctorId && { doctorId }),
             },
           });
 
-          return { appointment, result, skipped: false };
+          return { appointment, result, skipped: false, missingRelations: !doctorId || !patientId };
         })
       );
 
       // Processar resultados
       let skipped = 0;
+      let withMissingRelations = 0;
       results.forEach((promiseResult) => {
         if (promiseResult.status === 'fulfilled') {
-          const { appointment, skipped: wasSkipped, result } = promiseResult.value;
+          const { appointment, skipped: wasSkipped, result, missingRelations } = promiseResult.value;
           
           if (wasSkipped) {
             skipped++;
@@ -362,7 +354,12 @@ async function importAppointments() {
               totalUpdated++;
             }
 
-            console.log(`   ✓ Atendimento ${appointment.hii_cod_atendimento} - ${appointment.paciente} (${appointment.dat_atendimento})`);
+            if (missingRelations) {
+              withMissingRelations++;
+              console.log(`   ✓ Atendimento ${appointment.hii_cod_atendimento} - ${appointment.paciente} (${appointment.dat_atendimento}) ⚠️ sem relacionamento completo`);
+            } else {
+              console.log(`   ✓ Atendimento ${appointment.hii_cod_atendimento} - ${appointment.paciente} (${appointment.dat_atendimento})`);
+            }
           }
         } else {
           totalErrors++;
@@ -371,7 +368,10 @@ async function importAppointments() {
       });
 
       if (skipped > 0) {
-        console.log(`   ⚠️  ${skipped} atendimento(s) pulado(s) (médico/paciente não encontrado)`);
+        console.log(`   ⚠️  ${skipped} atendimento(s) pulado(s) (data inválida)`);
+      }
+      if (withMissingRelations > 0) {
+        console.log(`   ℹ️  ${withMissingRelations} atendimento(s) cadastrado(s) sem médico/paciente`);
       }
 
       console.log('');

@@ -18,7 +18,6 @@ export const getAllSpecialties = async (req: any, res: any) => {
     if (search) {
       where.OR = [
         { name: { contains: search, mode: 'insensitive' } },
-        { acronym: { contains: search, mode: 'insensitive' } },
       ];
     }
 
