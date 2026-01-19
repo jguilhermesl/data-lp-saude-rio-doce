@@ -36,8 +36,6 @@ export const SIDEBAR_ITEMS: SidebarItem[] = [
     adminOnly: false,
   },
   {
-    label: "Categorias",
-    href: "/company/categories",
     label: "Atendimentos",
     href: "/appointments",
     icon: Calendar,
@@ -51,13 +49,13 @@ export const SIDEBAR_ITEMS: SidebarItem[] = [
   },
   {
     label: "Usuários",
-    href: "/company/users",
+    href: "/users",
     icon: Users,
     adminOnly: true, // Apenas admin pode acessar
   },
   {
     label: "Configurações",
-    href: "/company/settings",
+    href: "/settings",
     icon: Settings,
     adminOnly: true, // Apenas admin pode acessar
   },

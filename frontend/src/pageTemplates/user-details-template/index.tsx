@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
 import { PrivateLayout } from '@/components/private-layout';
 import { Button } from '@/components/ui/button';
@@ -63,7 +64,7 @@ export const UserDetailsTemplate = ({ userId }: UserDetailsTemplateProps) => {
           });
         } else {
           alert('Usuário não encontrado!');
-          router.push('/company/users');
+          router.push('/users');
         }
       } catch (error) {
         console.error('Error loading user:', error);
@@ -104,7 +105,7 @@ export const UserDetailsTemplate = ({ userId }: UserDetailsTemplateProps) => {
           phone: formData.phone || undefined,
         });
         toast.success('Usuário criado com sucesso!');
-        router.push('/company/users');
+        router.push('/users');
       } else {
         // Update existing user
         const updateData: any = {
@@ -147,7 +148,7 @@ export const UserDetailsTemplate = ({ userId }: UserDetailsTemplateProps) => {
             setDeleting(true);
             await usersApi.delete(userId);
             toast.success('Usuário deletado com sucesso!');
-            router.push('/company/users');
+            router.push('/users');
           } catch (error: any) {
             console.error('Error deleting user:', error);
             toast.error(
@@ -167,7 +168,7 @@ export const UserDetailsTemplate = ({ userId }: UserDetailsTemplateProps) => {
 
   const handleCancel = () => {
     if (userId === 'new') {
-      router.push('/company/users');
+      router.push('/users');
     } else {
       setIsEditing(false);
       if (user) {
@@ -194,7 +195,7 @@ export const UserDetailsTemplate = ({ userId }: UserDetailsTemplateProps) => {
 
   // Redirect if not admin
   if (!isAdmin) {
-    router.push('/company/users');
+    router.push('/users');
     return null;
   }
 
@@ -209,7 +210,6 @@ export const UserDetailsTemplate = ({ userId }: UserDetailsTemplateProps) => {
   const getRoleName = (role: string) => {
     const roleNames = {
       ADMIN: 'Administrador',
-      MANAGER: 'Gerente',
       VIEWER: 'Visualizador',
     };
     return roleNames[role as keyof typeof roleNames] || role;
@@ -263,7 +263,7 @@ export const UserDetailsTemplate = ({ userId }: UserDetailsTemplateProps) => {
         <div>
           <Button
             variant="ghost"
-            onClick={() => router.push('/company/users')}
+            onClick={() => router.push('/users')}
             className="mb-4"
           >
             <ArrowLeft className="mr-2 h-4 w-4" />
@@ -362,7 +362,6 @@ export const UserDetailsTemplate = ({ userId }: UserDetailsTemplateProps) => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="ADMIN">Administrador</SelectItem>
-                    <SelectItem value="MANAGER">Gerente</SelectItem>
                     <SelectItem value="VIEWER">Visualizador</SelectItem>
                   </SelectContent>
                 </Select>

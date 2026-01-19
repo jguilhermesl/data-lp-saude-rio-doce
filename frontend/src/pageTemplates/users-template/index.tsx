@@ -13,7 +13,7 @@ export const UsersTemplate = () => {
   const router = useRouter();
 
   const handleCreateUser = () => {
-    router.push('/company/users/new');
+    router.push('/users/new');
   };
 
   // TODO: Get user role from auth context

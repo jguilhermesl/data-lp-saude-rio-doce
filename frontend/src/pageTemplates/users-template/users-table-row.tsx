@@ -1,7 +1,8 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
 import { Button } from '@/components/ui/button';
 import { Table } from '@/components/ui/table';
-import { Eye, Pencil, Trash2 } from 'lucide-react';
+import { Eye, Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { User, usersApi } from '@/services/api/users';
 import { useState } from 'react';
@@ -20,11 +21,11 @@ export const UsersTableRow = ({ user, onDelete }: UsersTableRowProps) => {
   const isAdmin = true; // This should come from authentication context
 
   const handleViewDetails = () => {
-    router.push(`/company/users/${user.id}`);
+    router.push(`/users/${user.id}`);
   };
 
   const handleEdit = () => {
-    router.push(`/company/users/${user.id}`);
+    router.push(`/users/${user.id}`);
   };
 
   const handleDelete = () => {
