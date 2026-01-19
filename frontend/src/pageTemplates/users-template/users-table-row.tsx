@@ -5,6 +5,7 @@ import { Eye, Pencil, Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { User, usersApi } from '@/services/api/users';
 import { useState } from 'react';
+import { toast } from 'sonner';
 
 interface UsersTableRowProps {
   user: User;
@@ -26,32 +27,39 @@ export const UsersTableRow = ({ user, onDelete }: UsersTableRowProps) => {
     router.push(`/company/users/${user.id}`);
   };
 
-  const handleDelete = async () => {
-    if (
-      !confirm(
-        `Tem certeza que deseja deletar o usuário ${user.name || user.email}?`,
-      )
-    ) {
-      return;
-    }
-
-    try {
-      setIsDeleting(true);
-      await usersApi.delete(user.id);
-      alert('Usuário deletado com sucesso!');
-      // Callback to refresh the list
-      if (onDelete) {
-        onDelete();
-      }
-    } catch (error: any) {
-      console.error('Error deleting user:', error);
-      alert(
-        error?.response?.data?.message ||
-          'Erro ao deletar usuário. Tente novamente.',
-      );
-    } finally {
-      setIsDeleting(false);
-    }
+  const handleDelete = () => {
+    toast(
+      `Tem certeza que deseja deletar o usuário ${user.name || user.email}?`,
+      {
+        description: 'Esta ação não pode ser desfeita.',
+        action: {
+          label: 'Confirmar',
+          onClick: async () => {
+            try {
+              setIsDeleting(true);
+              await usersApi.delete(user.id);
+              toast.success('Usuário deletado com sucesso!');
+              // Callback to refresh the list
+              if (onDelete) {
+                onDelete();
+              }
+            } catch (error: any) {
+              console.error('Error deleting user:', error);
+              toast.error(
+                error?.response?.data?.message ||
+                  'Erro ao deletar usuário. Tente novamente.',
+              );
+            } finally {
+              setIsDeleting(false);
+            }
+          },
+        },
+        cancel: {
+          label: 'Cancelar',
+          onClick: () => {},
+        },
+      },
+    );
   };
 
   const getRoleName = (role: string) => {
