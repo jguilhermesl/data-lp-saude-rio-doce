@@ -1,9 +1,22 @@
 import { Router } from 'express';
+import { authMiddleware } from '@/middlewares/auth-middleware';
 import { createUser } from './create-user';
+import { getAllUsers } from './get-all-users';
+import { updateUser } from './update-user';
+import { deleteUser } from './delete-user';
 
 const routerUsers = Router();
 
-// Apenas administradores podem criar usuários
-routerUsers.post('/users', (req, res) => createUser(req, res));
+// Buscar todos os usuários (requer autenticação)
+routerUsers.get('/users', authMiddleware, (req, res) => getAllUsers(req, res));
+
+// Criar usuários (requer autenticação)
+routerUsers.post('/users', authMiddleware, (req, res) => createUser(req, res));
+
+// Atualizar usuários (requer autenticação)
+routerUsers.put('/users/:id', authMiddleware, (req, res) => updateUser(req, res));
+
+// Deletar usuários (requer autenticação)
+routerUsers.delete('/users/:id', authMiddleware, (req, res) => deleteUser(req, res));
 
 export { routerUsers };

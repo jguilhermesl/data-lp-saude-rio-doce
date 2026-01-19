@@ -7,15 +7,16 @@ const createUserSchema = z.object({
   email: z.string().email(),
   name: z.string().min(1),
   password: z.string().min(6),
-  role: z.enum(['ADMIN', 'MANAGER', 'VIEWER']).default('VIEWER')
+  role: z.enum(['ADMIN', 'MANAGER', 'VIEWER']).default('VIEWER'),
+  phone: z.string().optional()
 });
 
 export const createUser = async (req: any, res: any) => {
   try {
-    const { email, name, password, role } = createUserSchema.parse(req.body);
+    const { email, name, password, role, phone } = createUserSchema.parse(req.body);
 
     const dao = new UserDAO();
-    
+
     // Verifica se já existe um usuário com este email
     const existingUser = await dao.findOne({ email });
 
@@ -31,13 +32,14 @@ export const createUser = async (req: any, res: any) => {
       email,
       name,
       role,
-      passwordHash
+      passwordHash,
+      phone
     });
 
     // Remove o passwordHash da resposta
     const { passwordHash: _, ...userWithoutPassword } = user;
 
-    return res.status(201).send({ 
+    return res.status(201).send({
       data: userWithoutPassword,
       message: 'User created successfully'
     });
