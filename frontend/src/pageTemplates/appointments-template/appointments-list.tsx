@@ -32,7 +32,7 @@ export const AppointmentsList = ({
     'Médico',
     'Convênio',
     'Valor Pago',
-    'Ações',
+    // 'Ações',
   ];
 
   if (isLoading) {
