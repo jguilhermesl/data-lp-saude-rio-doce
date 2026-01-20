@@ -53,10 +53,4 @@ export const SIDEBAR_ITEMS: SidebarItem[] = [
     icon: Users,
     adminOnly: true, // Apenas admin pode acessar
   },
-  {
-    label: "Configurações",
-    href: "/settings",
-    icon: Settings,
-    adminOnly: true, // Apenas admin pode acessar
-  },
 ];

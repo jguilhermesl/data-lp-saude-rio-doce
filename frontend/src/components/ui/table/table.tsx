@@ -28,14 +28,14 @@ export const Table = ({
   const customHeaders = isSelectable ? ['', ...headers] : headers;
 
   return (
-    <div className="flex m-auto relative w-full rounded-xl shadow-2xl overflow-hidden">
+    <div className="flex m-auto relative w-full rounded-lg shadow-2xl overflow-hidden">
       <div
         style={{
           maxHeight: height - 150,
         }}
         className="w-full overflow-x-auto"
       >
-        <table className="table border-collapse w-full rounded-xl bg-white">
+        <table className="table border-collapse w-full rounded-lg bg-white">
           <THead
             headers={customHeaders}
             showColumnSortButton={showColumnSortButton}
