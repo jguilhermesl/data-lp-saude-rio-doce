@@ -1,21 +1,15 @@
-"use client";
+'use client';
 
-import { ReactNode, useState, useEffect } from "react";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
-import {
-  ChevronLeft,
-  ChevronRight,
-  LogOut,
-  Menu,
-  X,
-} from "lucide-react";
-import { Heading } from "./ui/heading";
-import { Paragraph } from "./ui/paragraph";
-import { cn } from "@/lib/utils";
-import { SIDEBAR_ITEMS } from "@/constants/sidebar-items";
-import { useAuth } from "@/hooks/useAuth";
-import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { ReactNode, useState, useEffect } from 'react';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { ChevronLeft, ChevronRight, LogOut, Menu, X } from 'lucide-react';
+import { Heading } from './ui/heading';
+import { Paragraph } from './ui/paragraph';
+import { cn } from '@/lib/utils';
+import { SIDEBAR_ITEMS } from '@/constants/sidebar-items';
+import { useAuth } from '@/hooks/useAuth';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
 
 interface IPrivateLayoutProps {
   children: ReactNode;
@@ -46,7 +40,7 @@ export const PrivateLayout = ({
 
   // Filtra os itens da sidebar baseado se o usuário é admin
   const visibleItems = SIDEBAR_ITEMS.filter(
-    (item) => !item.adminOnly || isAdmin
+    (item) => !item.adminOnly || isAdmin,
   );
 
   const handleLogout = () => {
@@ -61,12 +55,12 @@ export const PrivateLayout = ({
   // Previne scroll do body quando o menu mobile está aberto
   useEffect(() => {
     if (isMobileMenuOpen) {
-      document.body.style.overflow = "hidden";
+      document.body.style.overflow = 'hidden';
     } else {
-      document.body.style.overflow = "unset";
+      document.body.style.overflow = 'unset';
     }
     return () => {
-      document.body.style.overflow = "unset";
+      document.body.style.overflow = 'unset';
     };
   }, [isMobileMenuOpen]);
 
@@ -83,19 +77,27 @@ export const PrivateLayout = ({
       {/* Sidebar Desktop */}
       <aside
         className={cn(
-          "hidden lg:flex flex-col bg-white border-r border-gray-200 transition-all duration-300 ease-in-out",
-          isExpanded ? "w-64" : "w-20"
+          'hidden lg:flex flex-col bg-white border-r border-gray-200 transition-all duration-300 ease-in-out',
+          isExpanded ? 'w-64' : 'w-20',
         )}
       >
         {/* Header da Sidebar */}
         <div className="flex items-center justify-between h-20 px-4 border-b border-gray-200">
           {isExpanded ? (
-            <Link href="/home">
-              <Heading className="text-green-600 text-2xl">easy.sale</Heading>
+            <Link href="/home" className='mx-auto flex'>
+              <img
+                src="https://lpsauderiodoce.com.br/wp-content/uploads/2025/06/cropped-Logotipo-e1751301927697.png"
+                alt="Logo"
+                className="h-8 w-auto"
+              />
             </Link>
           ) : (
             <Link href="/home" className="w-full flex justify-center">
-              <Heading className="text-green-600 text-2xl">E</Heading>
+               <img
+                src="https://lpsauderiodoce.com.br/wp-content/uploads/2025/06/cropped-Logotipo-e1751301927697.png"
+                alt="Logo"
+                className="h-4 w-auto"
+              />
             </Link>
           )}
         </div>
@@ -112,11 +114,11 @@ export const PrivateLayout = ({
                   <Link
                     href={item.href}
                     className={cn(
-                      "flex items-center gap-3 px-3 py-3 rounded-lg transition-all duration-200",
+                      'flex items-center gap-3 px-3 py-3 rounded-lg transition-all duration-200',
                       isActive
-                        ? "bg-green-50 text-green-600 font-medium"
-                        : "text-gray-700 hover:bg-gray-100",
-                      !isExpanded && "justify-center"
+                        ? 'bg-green-50 text-green-600 font-medium'
+                        : 'text-gray-700 hover:bg-gray-100',
+                      !isExpanded && 'justify-center',
                     )}
                     title={!isExpanded ? item.label : undefined}
                   >
@@ -136,10 +138,10 @@ export const PrivateLayout = ({
           <button
             onClick={handleLogout}
             className={cn(
-              "flex items-center gap-3 px-3 py-3 rounded-lg transition-all duration-200 text-red-600 hover:bg-red-50 w-full",
-              !isExpanded && "justify-center"
+              'flex items-center gap-3 px-3 py-3 rounded-lg transition-all duration-200 text-red-600 hover:bg-red-50 w-full',
+              !isExpanded && 'justify-center',
             )}
-            title={!isExpanded ? "Sair" : undefined}
+            title={!isExpanded ? 'Sair' : undefined}
           >
             <LogOut className="w-5 h-5 shrink-0" />
             {isExpanded && <span className="text-sm">Sair</span>}
@@ -149,10 +151,10 @@ export const PrivateLayout = ({
           <button
             onClick={() => setIsExpanded(!isExpanded)}
             className={cn(
-              "flex items-center gap-3 px-3 py-3 rounded-lg transition-all duration-200 text-gray-700 hover:bg-gray-100 w-full",
-              !isExpanded && "justify-center"
+              'flex items-center gap-3 px-3 py-3 rounded-lg transition-all duration-200 text-gray-700 hover:bg-gray-100 w-full',
+              !isExpanded && 'justify-center',
             )}
-            title={isExpanded ? "Retrair" : "Expandir"}
+            title={isExpanded ? 'Retrair' : 'Expandir'}
           >
             {isExpanded ? (
               <>
@@ -169,14 +171,18 @@ export const PrivateLayout = ({
       {/* Sidebar Mobile */}
       <aside
         className={cn(
-          "fixed top-0 left-0 h-full w-64 bg-white border-r border-gray-200 z-50 transform transition-transform duration-300 ease-in-out lg:hidden",
-          isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"
+          'fixed top-0 left-0 h-full w-64 bg-white border-r border-gray-200 z-50 transform transition-transform duration-300 ease-in-out lg:hidden',
+          isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full',
         )}
       >
         {/* Header da Sidebar Mobile */}
         <div className="flex items-center justify-between h-20 px-4 border-b border-gray-200">
           <Link href="/home">
-            <Heading className="text-green-600 text-2xl">easy.sale</Heading>
+            <img
+              src="https://lpsauderiodoce.com.br/wp-content/uploads/2025/06/cropped-Logotipo-e1751301927697.png"
+              alt="Logo"
+              className="h-8 w-auto"
+            />
           </Link>
           <button
             onClick={() => setIsMobileMenuOpen(false)}
@@ -198,10 +204,10 @@ export const PrivateLayout = ({
                   <Link
                     href={item.href}
                     className={cn(
-                      "flex items-center gap-3 px-3 py-3 rounded-lg transition-all duration-200",
+                      'flex items-center gap-3 px-3 py-3 rounded-lg transition-all duration-200',
                       isActive
-                        ? "bg-green-50 text-green-600 font-medium"
-                        : "text-gray-700 hover:bg-gray-100"
+                        ? 'bg-green-50 text-green-600 font-medium'
+                        : 'text-gray-700 hover:bg-gray-100',
                     )}
                   >
                     <Icon className="w-5 h-5 shrink-0" />

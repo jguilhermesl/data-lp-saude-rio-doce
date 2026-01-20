@@ -21,6 +21,10 @@
     "import:patients": "tsx src/scripts/import-patients.ts",
     "import:appointments": "tsx src/scripts/import-appointments.ts",
     "import:appointment-procedures": "tsx src/scripts/import-appointment-procedures.ts",
+    "import:expenses": "tsx src/scripts/import-expenses.ts",
+    "analyze:expense-categories": "tsx src/scripts/analyze-expense-categories.ts",
+    "analyze:database-categories": "tsx src/scripts/analyze-database-categories.ts",
+    "clear:expenses": "tsx src/scripts/clear-expenses.ts",
     "sync:all": "tsx src/scripts/sync-all.ts"
   },
   "dependencies": {
@@ -29,11 +33,13 @@
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.5",
     "date-fns": "^4.1.0",
+    "date-fns-tz": "^3.2.0",
     "dotenv": "^17.2.3",
     "express": "^5.2.1",
     "prisma": "^5.17.0",
     "tsup": "^8.5.1",
     "tsx": "^4.21.0",
+    "xlsx": "^0.18.5",
     "zod": "^4.3.5"
   },
   "devDependencies": {

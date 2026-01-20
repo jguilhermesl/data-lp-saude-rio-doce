@@ -152,6 +152,8 @@ export class PatientDAO {
           id: patient.id,
           fullName: patient.fullName,
           cpf: patient.cpf,
+          homePhone: patient.homePhone,
+          mobilePhone: patient.mobilePhone,
           lastAppointmentDate: patient.appointments[0]?.appointmentDate,
           daysSinceLastAppointment: Math.floor(
             (new Date().getTime() - patient.appointments[0]?.appointmentDate.getTime()) /
@@ -194,20 +196,30 @@ export class PatientDAO {
   }
 
   /**
-   * Taxa de retorno geral
+   * Taxa de retorno geral (considerando apenas pacientes com atendimentos no período)
    */
-  async getReturnRate() {
+  async getReturnRate(startDate: Date, endDate: Date) {
     try {
-      const allPatients = await prisma.patient.findMany({
+      // Buscar pacientes que tiveram atendimentos no período
+      const patientsInPeriod = await prisma.patient.findMany({
+        where: {
+          appointments: {
+            some: {
+              appointmentDate: { gte: startDate, lte: endDate },
+            },
+          },
+        },
         include: {
-          _count: {
-            select: { appointments: true },
+          appointments: {
+            where: {
+              appointmentDate: { gte: startDate, lte: endDate },
+            },
           },
         },
       });
 
-      const totalPatients = allPatients.length;
-      const recurringPatients = allPatients.filter((p) => p._count.appointments > 1).length;
+      const totalPatients = patientsInPeriod.length;
+      const recurringPatients = patientsInPeriod.filter((p) => p.appointments.length > 1).length;
 
       return {
         totalPatients,

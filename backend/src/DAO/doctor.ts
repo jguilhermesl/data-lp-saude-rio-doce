@@ -105,14 +105,17 @@ export class DoctorDAO {
   }
 
   /**
-   * Taxa de retorno por médico (pacientes que voltaram)
+   * Taxa de retorno por médico (pacientes que voltaram no período)
    */
-  async getDoctorReturnRate(doctorId: string) {
+  async getDoctorReturnRate(doctorId: string, startDate: Date, endDate: Date) {
     try {
-      // Buscar todos os pacientes únicos do médico
+      // Buscar todos os pacientes únicos do médico no período
       const patientAppointments = await prisma.appointment.groupBy({
         by: ['patientId'],
-        where: { doctorId },
+        where: { 
+          doctorId,
+          appointmentDate: { gte: startDate, lte: endDate },
+        },
         _count: { id: true },
       });
 

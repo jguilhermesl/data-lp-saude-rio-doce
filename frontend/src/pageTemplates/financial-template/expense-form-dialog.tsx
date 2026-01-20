@@ -17,25 +17,6 @@ const getTodayDate = () => {
   return today.toISOString().split('T')[0];
 };
 
-const getCurrentMonth = () => {
-  const today = new Date();
-  const months = [
-    'Janeiro',
-    'Fevereiro',
-    'Março',
-    'Abril',
-    'Maio',
-    'Junho',
-    'Julho',
-    'Agosto',
-    'Setembro',
-    'Outubro',
-    'Novembro',
-    'Dezembro',
-  ];
-  return `${months[today.getMonth()]}/${today.getFullYear()}`;
-};
-
 interface ExpenseFormDialogProps {
   isOpen: boolean;
   onClose: () => void;
@@ -52,7 +33,6 @@ export const ExpenseFormDialog = ({
   const [formData, setFormData] = useState<CreateExpenseData>({
     payment: '',
     value: 0,
-    month: '',
     date: '',
     category: '',
   });
@@ -60,13 +40,31 @@ export const ExpenseFormDialog = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const categories = [
-    'Salários',
-    'Impostos',
-    'Aluguel',
-    'Equipamentos',
-    'Materiais',
-    'Serviços',
-    'Outros',
+    'MÉDICO',
+    'TERCEIROS',
+    'MARKETING',
+    'INSUMOS',
+    'FUNCIONÁRIO',
+    'ESTORNO',
+    'TROCO',
+    'FAXINA',
+    'LABORATÓRIO',
+    'SEGURANÇA',
+    'CONTADOR',
+    'EMPRÉSTIMO',
+    'SISTEMA',
+    'IMPOSTO',
+    'ALUGUEL',
+    'ENERGIA',
+    'ROYALTIES',
+    'INTERNET',
+    'MAQUINÁRIO',
+    'CONSÓRCIO',
+    'SEGURO',
+    'CONSULTORIA',
+    'LIXO',
+    'TARIFA',
+    'OUTROS',
   ];
 
   useEffect(() => {
@@ -74,7 +72,6 @@ export const ExpenseFormDialog = ({
       setFormData({
         payment: expense.payment,
         value: expense.value,
-        month: expense.month,
         date: expense.date.split('T')[0],
         category: expense.category,
       });
@@ -82,7 +79,6 @@ export const ExpenseFormDialog = ({
       setFormData({
         payment: '',
         value: 0,
-        month: getCurrentMonth(),
         date: getTodayDate(),
         category: '',
       });
@@ -95,7 +91,6 @@ export const ExpenseFormDialog = ({
     if (
       !formData.payment ||
       !formData.value ||
-      !formData.month ||
       !formData.date ||
       !formData.category
     ) {
@@ -223,18 +218,6 @@ export const ExpenseFormDialog = ({
                 </option>
               ))}
             </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Mês <span className="text-red-500">*</span>
-            </label>
-            <input
-              name="month"
-              value={formData.month}
-              onChange={handleChange}
-              className="w-full rounded-md border px-3 py-2 focus:ring-2 focus:ring-blue-500"
-            />
           </div>
 
           <div>

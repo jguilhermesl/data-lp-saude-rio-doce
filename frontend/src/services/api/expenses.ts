@@ -4,7 +4,6 @@ export interface Expense {
   id: string;
   payment: string;
   value: number;
-  month: string;
   date: string;
   category: string;
   createdAt: string;
@@ -18,7 +17,6 @@ export interface ExpensesResponse {
 export interface CreateExpenseData {
   payment: string;
   value: number;
-  month: string;
   date: string;
   category: string;
 }
@@ -26,7 +24,6 @@ export interface CreateExpenseData {
 export interface UpdateExpenseData {
   payment?: string;
   value?: number;
-  month?: string;
   date?: string;
   category?: string;
 }

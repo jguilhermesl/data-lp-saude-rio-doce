@@ -269,7 +269,6 @@ model Expense {
   // Dados da despesa
   payment     String   // Tipo de pagamento (ex: "Aluguel", "Salário", "Energia", etc.)
   value       Decimal  @db.Decimal(10, 2) // Valor da despesa
-  month       String   // Mês de referência (ex: "Janeiro", "Fevereiro")
   date        DateTime @db.Date // Data do pagamento
   category    String   // Categoria da despesa (ex: "Infraestrutura", "Pessoal", "Operacional")
   
@@ -279,6 +278,5 @@ model Expense {
 
   @@index([date])
   @@index([category])
-  @@index([month])
   @@map("expenses")
 }

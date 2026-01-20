@@ -36,7 +36,7 @@ export const getPatientsMetrics = async (req: any, res: any) => {
     const [segmentation, patientsAtRisk, returnRateData] = await Promise.all([
       patientDAO.getPatientSegmentation(startDate, endDate),
       patientDAO.getPatientsAtRisk(3),
-      patientDAO.getReturnRate(),
+      patientDAO.getReturnRate(startDate, endDate),
     ]);
 
     // Calcular métricas de segmentação

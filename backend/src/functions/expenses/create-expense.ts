@@ -5,7 +5,6 @@ import { ExpenseDAO } from "@/DAO/expense";
 const createExpenseSchema = z.object({
   payment: z.string().min(1, 'Payment type is required'),
   value: z.number().positive('Value must be positive'),
-  month: z.string().min(1, 'Month is required'),
   date: z.string().refine((val) => !isNaN(Date.parse(val)), {
     message: 'Invalid date format'
   }),
@@ -14,7 +13,7 @@ const createExpenseSchema = z.object({
 
 export const createExpense = async (req: any, res: any) => {
   try {
-    const { payment, value, month, date, category } = createExpenseSchema.parse(req.body);
+    const { payment, value, date, category } = createExpenseSchema.parse(req.body);
 
     const dao = new ExpenseDAO();
 
@@ -22,7 +21,6 @@ export const createExpense = async (req: any, res: any) => {
     const expense = await dao.createOne({
       payment,
       value,
-      month,
       date: new Date(date),
       category,
     });

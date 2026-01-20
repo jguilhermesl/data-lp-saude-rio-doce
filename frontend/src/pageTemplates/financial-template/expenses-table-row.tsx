@@ -93,7 +93,6 @@ export const ExpensesTableRow = ({
       <Table.Col className="font-semibold text-green-600">
         {formatCurrency(expense.value)}
       </Table.Col>
-      <Table.Col>{expense.month}</Table.Col>
       <Table.Col>{formatDate(expense.date)}</Table.Col>
       <Table.Col>
         <span

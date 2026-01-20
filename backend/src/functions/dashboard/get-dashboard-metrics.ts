@@ -1,14 +1,28 @@
 import { handleErrors } from '@/utils/handle-errors';
 import { z } from 'zod';
 import { appointmentDAO } from '@/DAO/appointment';
-import { doctorDAO } from '@/DAO/doctor';
 import { patientDAO } from '@/DAO/patient';
-import { procedureDAO } from '@/DAO/procedure';
 import { prisma } from '@/lib/prisma';
+import { startOfMonth, endOfMonth, differenceInMonths, format, startOfDay, endOfDay } from 'date-fns';
+import { toZonedTime } from 'date-fns-tz';
+
+const TIMEZONE = 'America/Recife';
 
 const querySchema = z.object({
-  startDate: z.string().transform((val) => new Date(val)),
-  endDate: z.string().transform((val) => new Date(val)),
+  startDate: z.string().transform((val) => {
+    // Criar data local sem conversão de timezone
+    const [year, month, day] = val.split('-').map(Number);
+    const localDate = new Date(year, month - 1, day);
+    // Normalizar para início do dia no timezone de Recife
+    return startOfDay(toZonedTime(localDate, TIMEZONE));
+  }),
+  endDate: z.string().transform((val) => {
+    // Criar data local sem conversão de timezone
+    const [year, month, day] = val.split('-').map(Number);
+    const localDate = new Date(year, month - 1, day);
+    // Normalizar para final do dia no timezone de Recife
+    return endOfDay(toZonedTime(localDate, TIMEZONE));
+  }),
 });
 
 export const getDashboardMetrics = async (req: any, res: any) => {
@@ -19,25 +33,15 @@ export const getDashboardMetrics = async (req: any, res: any) => {
     const [
       financial,
       paymentStatus,
-      doctorsPerformance,
-      topDoctors,
       patientSegmentation,
       returnRate,
-      topProcedures,
-      totalDoctors,
       totalPatients,
-      totalProcedures,
     ] = await Promise.all([
       appointmentDAO.getFinancialMetrics(startDate, endDate, {}),
       appointmentDAO.getPaymentStatus(startDate, endDate),
-      doctorDAO.getDoctorsPerformance(startDate, endDate),
-      doctorDAO.getTopDoctorsByRevenue(startDate, endDate, 3),
       patientDAO.getPatientSegmentation(startDate, endDate),
-      patientDAO.getReturnRate(),
-      procedureDAO.getTopSellingProcedures(startDate, endDate, 3),
-      doctorDAO.count(),
+      patientDAO.getReturnRate(startDate, endDate),
       patientDAO.count(),
-      procedureDAO.count(),
     ]);
 
     // Processar métricas financeiras
@@ -48,63 +52,123 @@ export const getDashboardMetrics = async (req: any, res: any) => {
     const averageTicket = Number(financial._avg.examValue || 0);
 
     const paidCount = paymentStatus.find((p) => p.paymentDone)?._count.id || 0;
-    const unpaidCount = paymentStatus.find((p) => !p.paymentDone)?._count.id || 0;
     const paymentRate = totalAppointments > 0 ? (paidCount / totalAppointments) * 100 : 0;
-
-    // Processar top médicos
-    const doctorIds = topDoctors.map((d) => d.doctorId);
-    const doctorsDetails = await prisma.doctor.findMany({
-      where: { id: { in: doctorIds } },
-      select: { id: true, name: true, crm: true },
-    });
-
-    const topDoctorsData = topDoctors.map((item) => {
-      const doctor = doctorsDetails.find((d) => d.id === item.doctorId);
-      return {
-        doctorId: item.doctorId,
-        name: doctor?.name || 'Desconhecido',
-        crm: doctor?.crm,
-        totalRevenue: Number(item._sum.examValue || 0),
-      };
-    });
-
-    // Calcular taxa de retorno de médicos (top 3)
-    const topDoctorsWithReturnRate = await Promise.all(
-      topDoctorsData.slice(0, 3).map(async (doctor) => {
-        const returnRate = await doctorDAO.getDoctorReturnRate(doctor.doctorId);
-        return {
-          ...doctor,
-          returnRate: returnRate.returnRate,
-        };
-      })
-    );
-
-    const bestReturnRateDoctor = topDoctorsWithReturnRate.reduce((prev, current) =>
-      prev.returnRate > current.returnRate ? prev : current
-    );
 
     // Processar pacientes
     const newPatientsCount = patientSegmentation.filter((p) => p.isNew).length;
     const recurringPatientsCount = patientSegmentation.filter((p) => p.isRecurring).length;
 
-    // Processar top procedimentos
-    const procedureIds = topProcedures.map((p) => p.procedureId);
-    const proceduresDetails = await prisma.procedure.findMany({
-      where: { id: { in: procedureIds } },
-      select: { id: true, name: true, code: true },
-    });
+    // Buscar métricas de despesas
+    const [expenseSummary, categoryRanking] = await Promise.all([
+      prisma.expense.aggregate({
+        where: {
+          date: { gte: startDate, lte: endDate },
+        },
+        _sum: {
+          value: true,
+        },
+      }),
+      prisma.expense.groupBy({
+        by: ['category'],
+        where: {
+          date: { gte: startDate, lte: endDate },
+        },
+        _sum: {
+          value: true,
+        },
+        _count: {
+          id: true,
+        },
+        orderBy: {
+          _sum: {
+            value: 'desc',
+          },
+        },
+      }),
+    ]);
 
-    const topProceduresData = topProcedures.map((item) => {
-      const procedure = proceduresDetails.find((p) => p.id === item.procedureId);
+    const totalExpenses = Number(expenseSummary._sum.value || 0);
+    const totalProfit = receivedRevenue - totalExpenses;
+
+    // Formatar ranking de categorias
+    const totalExpensesForPercentage = categoryRanking.reduce(
+      (acc, item) => acc + Number(item._sum.value || 0),
+      0
+    );
+
+    const categoryRankingFormatted = categoryRanking.map((item) => {
+      const value = Number(item._sum.value || 0);
       return {
-        procedureId: item.procedureId,
-        name: procedure?.name || 'Desconhecido',
-        code: procedure?.code,
-        quantitySold: item._sum.quantity || 0,
-        timesOrdered: item._count.id,
-        totalRevenue: Number(item._sum.totalRevenue || 0),
+        category: item.category,
+        totalValue: value,
+        count: item._count.id,
+        percentage: totalExpensesForPercentage > 0 
+          ? (value / totalExpensesForPercentage) * 100 
+          : 0,
       };
     });
+
+    // Gerar série temporal (se período > 1 mês)
+    const monthsDiff = differenceInMonths(endDate, startDate);
+    let timeSeries: any[] = [];
+
+    if (monthsDiff >= 1) {
+      const months: Date[] = [];
+      let currentDate = startOfMonth(startDate);
+      const endMonthDate = endOfMonth(endDate);
+
+      while (currentDate <= endMonthDate) {
+        months.push(currentDate);
+        currentDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1);
+      }
+
+      const monthlyData = await Promise.all(
+        months.map(async (month) => {
+          const monthStart = startOfMonth(month);
+          const monthEnd = endOfMonth(month);
+
+          // Garantir que estamos dentro do período selecionado
+          const actualStart = monthStart < startDate ? startDate : monthStart;
+          const actualEnd = monthEnd > endDate ? endDate : monthEnd;
+
+          const [appointmentData, expenseData] = await Promise.all([
+            prisma.appointment.aggregate({
+              where: {
+                appointmentDate: { gte: actualStart, lte: actualEnd },
+              },
+              _sum: {
+                paidValue: true,
+              },
+              _count: {
+                id: true,
+              },
+            }),
+            prisma.expense.aggregate({
+              where: {
+                date: { gte: actualStart, lte: actualEnd },
+              },
+              _sum: {
+                value: true,
+              },
+            }),
+          ]);
+
+          const revenue = Number(appointmentData._sum.paidValue || 0);
+          const expenses = Number(expenseData._sum.value || 0);
+          const appointments = appointmentData._count.id || 0;
+
+          return {
+            period: format(month, 'MM/yy'),
+            revenue,
+            expenses,
+            profit: revenue - expenses,
+            appointments,
+          };
+        })
+      );
+
+      timeSeries = monthlyData;
+    }
 
     // Montar resposta do dashboard
     const response = {
@@ -115,15 +179,8 @@ export const getDashboardMetrics = async (req: any, res: any) => {
         averageTicket,
         paymentRate,
         totalAppointments,
-      },
-      doctors: {
-        total: totalDoctors,
-        topByRevenue: topDoctorsData,
-        bestReturnRate: {
-          doctorId: bestReturnRateDoctor.doctorId,
-          name: bestReturnRateDoctor.name,
-          returnRate: bestReturnRateDoctor.returnRate,
-        },
+        totalExpenses,
+        totalProfit,
       },
       patients: {
         total: totalPatients,
@@ -131,9 +188,12 @@ export const getDashboardMetrics = async (req: any, res: any) => {
         recurringPatients: recurringPatientsCount,
         returnRate: returnRate.returnRate,
       },
-      procedures: {
-        total: totalProcedures,
-        topSelling: topProceduresData,
+      expenses: {
+        summary: {
+          totalExpenses,
+        },
+        categoryRanking: categoryRankingFormatted,
+        timeSeries,
       },
       period: {
         startDate,

@@ -54,7 +54,7 @@ export const SIDEBAR_ITEMS: SidebarItem[] = [
     adminOnly: true, // Apenas admin pode acessar
   },
   {
-    label: "Despesas",
+    label: "Financeiro",
     href: "/financial",
     icon: DollarSign,
     adminOnly: true,

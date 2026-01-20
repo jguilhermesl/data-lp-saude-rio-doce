@@ -1,0 +1,191 @@
+import { handleErrors } from '@/utils/handle-errors';
+import { z } from 'zod';
+import { prisma } from '@/lib/prisma';
+import { startOfMonth, endOfMonth, differenceInMonths, format } from 'date-fns';
+
+const querySchema = z.object({
+  startDate: z.string().transform((val) => new Date(val)),
+  endDate: z.string().transform((val) => new Date(val)),
+  category: z.string().optional(),
+  search: z.string().optional(),
+});
+
+export const getFinancialMetrics = async (req: any, res: any) => {
+  try {
+    const { startDate, endDate, category, search } = querySchema.parse(req.query);
+
+    // Construir filtros para expenses
+    const expenseWhere: any = {
+      date: { gte: startDate, lte: endDate },
+    };
+
+    if (category) {
+      expenseWhere.category = category;
+    }
+
+    if (search) {
+      expenseWhere.OR = [
+        { payment: { contains: search, mode: 'insensitive' } },
+        { category: { contains: search, mode: 'insensitive' } },
+      ];
+    }
+
+    // Buscar dados em paralelo
+    const [
+      appointments,
+      expenses,
+      expenseSummary,
+      categoryRanking,
+    ] = await Promise.all([
+      // Buscar appointments para calcular faturamento
+      prisma.appointment.aggregate({
+        where: {
+          appointmentDate: { gte: startDate, lte: endDate },
+        },
+        _sum: {
+          paidValue: true,
+        },
+      }),
+      // Buscar expenses filtradas
+      prisma.expense.findMany({
+        where: expenseWhere,
+        orderBy: { date: 'desc' },
+      }),
+      // Soma total de expenses
+      prisma.expense.aggregate({
+        where: expenseWhere,
+        _sum: {
+          value: true,
+        },
+      }),
+      // Ranking por categoria
+      prisma.expense.groupBy({
+        by: ['category'],
+        where: {
+          date: { gte: startDate, lte: endDate },
+        },
+        _sum: {
+          value: true,
+        },
+        _count: {
+          id: true,
+        },
+        orderBy: {
+          _sum: {
+            value: 'desc',
+          },
+        },
+      }),
+    ]);
+
+    // Calcular métricas principais
+    const totalRevenue = Number(appointments._sum.paidValue || 0);
+    const totalExpenses = Number(expenseSummary._sum.value || 0);
+    const totalProfit = totalRevenue - totalExpenses;
+
+    // Formatar ranking de categorias
+    const totalExpensesForPercentage = categoryRanking.reduce(
+      (acc, item) => acc + Number(item._sum.value || 0),
+      0
+    );
+
+    const categoryRankingFormatted = categoryRanking.map((item) => {
+      const value = Number(item._sum.value || 0);
+      return {
+        category: item.category,
+        totalValue: value,
+        count: item._count.id,
+        percentage: totalExpensesForPercentage > 0 
+          ? (value / totalExpensesForPercentage) * 100 
+          : 0,
+      };
+    });
+
+    // Verificar se precisa gerar série temporal (período > 1 mês)
+    const monthsDiff = differenceInMonths(endDate, startDate);
+    let timeSeries: any[] = [];
+
+    if (monthsDiff >= 1) {
+      // Gerar série temporal por mês
+      const months: Date[] = [];
+      let currentDate = startOfMonth(startDate);
+      const endMonthDate = endOfMonth(endDate);
+
+      while (currentDate <= endMonthDate) {
+        months.push(currentDate);
+        currentDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1);
+      }
+
+      // Buscar dados por mês
+      const monthlyData = await Promise.all(
+        months.map(async (month) => {
+          const monthStart = startOfMonth(month);
+          const monthEnd = endOfMonth(month);
+
+          const [appointmentData, expenseData] = await Promise.all([
+            prisma.appointment.aggregate({
+              where: {
+                appointmentDate: { gte: monthStart, lte: monthEnd },
+              },
+              _sum: {
+                paidValue: true,
+              },
+            }),
+            prisma.expense.aggregate({
+              where: {
+                date: { gte: monthStart, lte: monthEnd },
+              },
+              _sum: {
+                value: true,
+              },
+            }),
+          ]);
+
+          const revenue = Number(appointmentData._sum.paidValue || 0);
+          const expenses = Number(expenseData._sum.value || 0);
+
+          return {
+            period: format(month, 'MM/yy'),
+            revenue,
+            expenses,
+            profit: revenue - expenses,
+          };
+        })
+      );
+
+      timeSeries = monthlyData;
+    }
+
+    // Formatar expenses
+    const expensesFormatted = expenses.map((expense) => ({
+      id: expense.id,
+      payment: expense.payment,
+      value: Number(expense.value),
+      date: expense.date,
+      category: expense.category,
+      createdAt: expense.createdAt,
+      updatedAt: expense.updatedAt,
+    }));
+
+    // Resposta
+    const response = {
+      summary: {
+        totalRevenue,
+        totalExpenses,
+        totalProfit,
+      },
+      categoryRanking: categoryRankingFormatted,
+      timeSeries,
+      expenses: expensesFormatted,
+      period: {
+        startDate,
+        endDate,
+      },
+    };
+
+    return res.status(200).send({ data: response });
+  } catch (err) {
+    const errorMessage = handleErrors(err);
+    return res.status(500).send({ message: errorMessage });
+  }
+};

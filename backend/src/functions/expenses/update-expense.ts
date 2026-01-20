@@ -5,7 +5,6 @@ import { ExpenseDAO } from "@/DAO/expense";
 const updateExpenseSchema = z.object({
   payment: z.string().min(1, 'Payment type is required').optional(),
   value: z.number().positive('Value must be positive').optional(),
-  month: z.string().min(1, 'Month is required').optional(),
   date: z.string().refine((val) => !isNaN(Date.parse(val)), {
     message: 'Invalid date format'
   }).optional(),
@@ -31,7 +30,6 @@ export const updateExpense = async (req: any, res: any) => {
 
     if (data.payment !== undefined) updateData.payment = data.payment;
     if (data.value !== undefined) updateData.value = data.value;
-    if (data.month !== undefined) updateData.month = data.month;
     if (data.date !== undefined) updateData.date = new Date(data.date);
     if (data.category !== undefined) updateData.category = data.category;
 
