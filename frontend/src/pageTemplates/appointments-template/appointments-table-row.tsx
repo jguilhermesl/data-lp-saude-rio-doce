@@ -75,12 +75,12 @@ export const AppointmentsTableRow = ({
       </Table.Col>
 
       {/* Ações */}
-      <Table.Col>
+      {/* <Table.Col>
         <Button variant="ghost" size="sm" onClick={handleViewDetails}>
           <Eye className="mr-2 h-3 w-3" />
           Ver detalhes
         </Button>
-      </Table.Col>
+      </Table.Col> */}
     </Table.Row>
   );
 };

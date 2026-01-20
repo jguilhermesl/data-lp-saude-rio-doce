@@ -14,13 +14,14 @@ import { Heading } from "./ui/heading";
 import { Paragraph } from "./ui/paragraph";
 import { cn } from "@/lib/utils";
 import { SIDEBAR_ITEMS } from "@/constants/sidebar-items";
+import { useAuth } from "@/hooks/useAuth";
+import { useCurrentUser } from "@/hooks/useCurrentUser";
 
 interface IPrivateLayoutProps {
   children: ReactNode;
   title: string;
   description: string;
   actionsComponent?: ReactNode;
-  isAdmin?: boolean; // Flag para verificar se o usuário é admin
 }
 
 export const PrivateLayout = ({
@@ -28,11 +29,20 @@ export const PrivateLayout = ({
   title,
   description,
   actionsComponent,
-  isAdmin = true,
 }: IPrivateLayoutProps) => {
   const [isExpanded, setIsExpanded] = useState(true);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const pathname = usePathname();
+  const { handleSignOut } = useAuth();
+  const { isAdmin, user } = useCurrentUser();
+
+  // Função para extrair primeiro e último nome
+  const getFirstAndLastName = (fullName: string | undefined) => {
+    if (!fullName) return '';
+    const names = fullName.trim().split(' ');
+    if (names.length === 1) return names[0];
+    return `${names[0]} ${names[names.length - 1]}`;
+  };
 
   // Filtra os itens da sidebar baseado se o usuário é admin
   const visibleItems = SIDEBAR_ITEMS.filter(
@@ -40,7 +50,7 @@ export const PrivateLayout = ({
   );
 
   const handleLogout = () => {
-    console.log("Logout");
+    handleSignOut();
   };
 
   // Fecha o menu mobile quando a rota muda
@@ -146,11 +156,11 @@ export const PrivateLayout = ({
           >
             {isExpanded ? (
               <>
-                <ChevronLeft className="w-5 h-5 flex-shrink-0" />
+                <ChevronLeft className="w-5 h-5 shrink-0" />
                 <span className="text-sm">Retrair</span>
               </>
             ) : (
-              <ChevronRight className="w-5 h-5 flex-shrink-0" />
+              <ChevronRight className="w-5 h-5 shrink-0" />
             )}
           </button>
         </div>
@@ -209,7 +219,7 @@ export const PrivateLayout = ({
             onClick={handleLogout}
             className="flex items-center gap-3 px-3 py-3 rounded-lg transition-all duration-200 text-red-600 hover:bg-red-50 w-full"
           >
-            <LogOut className="w-5 h-5 flex-shrink-0" />
+            <LogOut className="w-5 h-5 shrink-0" />
             <span className="text-sm">Sair</span>
           </button>
         </div>
@@ -238,9 +248,14 @@ export const PrivateLayout = ({
           <div className="flex items-center gap-2 md:gap-4">
             {actionsComponent}
             {isAdmin && (
-              <span className="px-2 md:px-3 py-1 bg-green-100 text-green-700 text-xs font-medium rounded-full">
-                Admin
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-700 font-medium hidden sm:inline">
+                  {getFirstAndLastName(user?.name)}
+                </span>
+                <span className="px-2 md:px-3 py-1 bg-green-100 text-green-700 text-xs font-medium rounded-full">
+                  Admin
+                </span>
+              </div>
             )}
           </div>
         </header>

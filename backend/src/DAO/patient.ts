@@ -116,46 +116,6 @@ export class PatientDAO {
     }
   }
 
-  /**
-   * Lifetime Value (LTV) dos pacientes
-   */
-  async getPatientLTV(limit?: number) {
-    try {
-      const result = await prisma.appointment.groupBy({
-        by: ['patientId'],
-        _sum: { examValue: true, paidValue: true },
-        _count: { id: true },
-        _max: { appointmentDate: true },
-        orderBy: {
-          _sum: { examValue: 'desc' },
-        },
-        ...(limit && { take: limit }),
-      });
-
-      return result.map((item) => ({
-        patientId: item.patientId,
-        totalSpent: Number(item._sum.examValue || 0),
-        totalPaid: Number(item._sum.paidValue || 0),
-        appointmentCount: item._count.id,
-        lastAppointmentDate: item._max.appointmentDate,
-      }));
-    } catch (error) {
-      console.error('Error in PatientDAO.getPatientLTV:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Pacientes VIP (top gastadores)
-   */
-  async getVIPPatients(limit: number = 20) {
-    try {
-      return await this.getPatientLTV(limit);
-    } catch (error) {
-      console.error('Error in PatientDAO.getVIPPatients:', error);
-      throw error;
-    }
-  }
 
   /**
    * Pacientes em risco de churn (sem atendimento há X meses)

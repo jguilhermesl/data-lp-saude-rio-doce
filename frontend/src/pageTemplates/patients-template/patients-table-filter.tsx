@@ -16,16 +16,42 @@ import {
 } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 
-export function PatientsTableFilters() {
-  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
-  const [minValue, setMinValue] = useState<string>('');
-  const [maxValue, setMaxValue] = useState<string>('');
+interface PatientsTableFiltersProps {
+  dateRange: DateRange | undefined;
+  setDateRange: (range: DateRange | undefined) => void;
+  search: string;
+  onSearch: (search: string) => void;
+  onRemoveFilters: () => void;
+  minSpent: string;
+  setMinSpent: (value: string) => void;
+  maxSpent: string;
+  setMaxSpent: (value: string) => void;
+  lastAppointmentDateRange: DateRange | undefined;
+  setLastAppointmentDateRange: (range: DateRange | undefined) => void;
+}
 
-  const handleRemoveFilters = () => {
-    setDateRange(undefined);
-    setMinValue('');
-    setMaxValue('');
-    // Aqui você pode adicionar a lógica para limpar outros filtros
+export function PatientsTableFilters({
+  dateRange,
+  setDateRange,
+  search,
+  onSearch,
+  onRemoveFilters,
+  minSpent,
+  setMinSpent,
+  maxSpent,
+  setMaxSpent,
+  lastAppointmentDateRange,
+  setLastAppointmentDateRange,
+}: PatientsTableFiltersProps) {
+  const [localSearch, setLocalSearch] = useState(search);
+  const [localMinSpent, setLocalMinSpent] = useState(minSpent);
+  const [localMaxSpent, setLocalMaxSpent] = useState(maxSpent);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSearch(localSearch);
+    setMinSpent(localMinSpent);
+    setMaxSpent(localMaxSpent);
   };
 
   const formatDateRange = (range: DateRange | undefined) => {
@@ -49,10 +75,11 @@ export function PatientsTableFilters() {
   };
 
   return (
-    <form className="flex flex-col gap-3">
-      <div className="flex items-center gap-2">
-        <span className="text-sm font-semibold">Filtros:</span>
+    <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className="text-sm font-semibold">Período de Atendimentos:</span>
 
+        {/* Data do período de atendimentos */}
         <Popover>
           <PopoverTrigger asChild>
             <Button
@@ -77,43 +104,81 @@ export function PatientsTableFilters() {
             />
           </PopoverContent>
         </Popover>
-
-        <Input placeholder="Convênio" className="h-8 w-[200px]" />
-
-        <Input placeholder="Especialidade" className="h-8 w-[200px]" />
       </div>
 
-      <div className="flex items-center gap-2">
-        <span className="text-sm font-semibold">Valor gasto:</span>
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className="text-sm font-semibold">Filtros Adicionais:</span>
 
-        <Input
-          placeholder="Valor mínimo (R$)"
-          className="h-8 w-[180px]"
-          type="number"
-          value={minValue}
-          onChange={(e) => setMinValue(e.target.value)}
+        {/* Busca geral (nome, CPF, telefone) */}
+        <Input 
+          placeholder="Buscar por nome, CPF ou telefone" 
+          className="h-8 w-[240px]" 
+          value={localSearch}
+          onChange={(e) => setLocalSearch(e.target.value)}
         />
 
-        <span className="text-sm text-muted-foreground">até</span>
-
-        <Input
-          placeholder="Valor máximo (R$)"
-          className="h-8 w-[180px]"
+        {/* Valor Gasto - Mínimo */}
+        <Input 
           type="number"
-          value={maxValue}
-          onChange={(e) => setMaxValue(e.target.value)}
+          placeholder="Valor mín. (R$)" 
+          className="h-8 w-[140px]" 
+          value={localMinSpent}
+          onChange={(e) => setLocalMinSpent(e.target.value)}
+          min="0"
+          step="0.01"
         />
 
-        <Button variant="secondary" size="sm" type="submit" className="ml-2">
+        {/* Valor Gasto - Máximo */}
+        <Input 
+          type="number"
+          placeholder="Valor máx. (R$)" 
+          className="h-8 w-[140px]" 
+          value={localMaxSpent}
+          onChange={(e) => setLocalMaxSpent(e.target.value)}
+          min="0"
+          step="0.01"
+        />
+
+        {/* Data do Último Atendimento */}
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button
+              variant="outline"
+              size="sm"
+              className={cn(
+                'h-8 w-[280px] justify-start text-left font-normal',
+                !lastAppointmentDateRange && 'text-muted-foreground'
+              )}
+            >
+              <CalendarIcon className="mr-2 h-4 w-4" />
+              {lastAppointmentDateRange?.from ? formatDateRange(lastAppointmentDateRange) : 'Último atendimento'}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0" align="start">
+            <Calendar
+              mode="range"
+              selected={lastAppointmentDateRange}
+              onSelect={setLastAppointmentDateRange}
+              numberOfMonths={2}
+              locale={ptBR}
+            />
+          </PopoverContent>
+        </Popover>
+
+        <Button variant="secondary" size="sm" type="submit">
           <Search className="mr-2 h-4 w-4" />
           Filtrar resultados
         </Button>
-
         <Button
           variant="outline"
           size="sm"
           type="button"
-          onClick={handleRemoveFilters}
+          onClick={() => {
+            setLocalSearch('');
+            setLocalMinSpent('');
+            setLocalMaxSpent('');
+            onRemoveFilters();
+          }}
         >
           <X className="mr-2 h-4 w-4" />
           Remover filtros

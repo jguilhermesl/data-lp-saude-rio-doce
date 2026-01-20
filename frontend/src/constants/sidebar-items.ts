@@ -3,7 +3,6 @@ import {
   Package,
   FolderTree,
   Users,
-  Settings,
   ClipboardList,
   Calendar,
   DollarSign,
@@ -58,12 +57,6 @@ export const SIDEBAR_ITEMS: SidebarItem[] = [
     label: "Despesas",
     href: "/financial",
     icon: DollarSign,
-    adminOnly: false,
-  },
-  {
-    label: "Configurações",
-    href: "/settings",
-    icon: Settings,
-    adminOnly: true, // Apenas admin pode acessar
+    adminOnly: true,
   },
 ];
