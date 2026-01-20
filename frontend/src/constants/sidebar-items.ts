@@ -3,9 +3,9 @@ import {
   Package,
   FolderTree,
   Users,
-  Settings,
   ClipboardList,
   Calendar,
+  DollarSign,
 } from "lucide-react";
 
 // Configuração dos itens da sidebar
@@ -52,5 +52,11 @@ export const SIDEBAR_ITEMS: SidebarItem[] = [
     href: "/users",
     icon: Users,
     adminOnly: true, // Apenas admin pode acessar
+  },
+  {
+    label: "Despesas",
+    href: "/financial",
+    icon: DollarSign,
+    adminOnly: true,
   },
 ];
