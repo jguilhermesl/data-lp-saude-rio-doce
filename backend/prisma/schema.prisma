@@ -261,3 +261,24 @@ model AppointmentProcedure {
   @@index([procedureId])
   @@map("appointment_procedures")
 }
+
+/// Despesa (Expense) - Gerenciamento de gastos do sistema
+model Expense {
+  id          String   @id @default(uuid())
+  
+  // Dados da despesa
+  payment     String   // Tipo de pagamento (ex: "Aluguel", "Salário", "Energia", etc.)
+  value       Decimal  @db.Decimal(10, 2) // Valor da despesa
+  month       String   // Mês de referência (ex: "Janeiro", "Fevereiro")
+  date        DateTime @db.Date // Data do pagamento
+  category    String   // Categoria da despesa (ex: "Infraestrutura", "Pessoal", "Operacional")
+  
+  // Campos técnicos
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([date])
+  @@index([category])
+  @@index([month])
+  @@map("expenses")
+}

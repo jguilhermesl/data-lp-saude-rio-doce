@@ -13,6 +13,7 @@ import { routerProcedures } from "./functions/procedures/routes";
 import { routerSpecialties } from "./functions/specialties/routes";
 import { routerDashboard } from "./functions/dashboard/routes";
 import { routerUsers } from "./functions/users/routes";
+import { routerExpenses } from "./functions/expenses/routes";
 
 const PORT = env.PORT;
 const app = express();
@@ -31,5 +32,6 @@ app.use(routerPatients);
 app.use(routerProcedures);
 app.use(routerSpecialties);
 app.use(routerDashboard);
+app.use(routerExpenses);
 
 app.listen(PORT, () => console.log(`Servidor rodando na porta ${PORT}!!!`));
