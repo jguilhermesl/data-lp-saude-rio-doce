@@ -90,13 +90,36 @@ export interface UserDetailsResponse {
 }
 
 export const usersApi = {
-  getAll: async (): Promise<UsersResponse> => {
-    const response = await api.get<{ data: UsersResponse }>('/users');
+  getAll: async (startDate?: Date, endDate?: Date): Promise<UsersResponse> => {
+    const params = new URLSearchParams();
+    
+    if (startDate) {
+      params.append('startDate', startDate.toISOString());
+    }
+    
+    if (endDate) {
+      params.append('endDate', endDate.toISOString());
+    }
+    
+    const response = await api.get<{ data: UsersResponse }>(`/users?${params.toString()}`);
     return response.data.data;
   },
 
-  getById: async (id: string): Promise<UserDetailsResponse> => {
-    const response = await api.get<{ data: UserDetailsResponse }>(`/users/${id}`);
+  getById: async (id: string, startDate?: Date, endDate?: Date): Promise<UserDetailsResponse> => {
+    const params = new URLSearchParams();
+    
+    if (startDate) {
+      params.append('startDate', startDate.toISOString());
+    }
+    
+    if (endDate) {
+      params.append('endDate', endDate.toISOString());
+    }
+    
+    const queryString = params.toString();
+    const url = queryString ? `/users/${id}?${queryString}` : `/users/${id}`;
+    
+    const response = await api.get<{ data: UserDetailsResponse }>(url);
     return response.data.data;
   },
 

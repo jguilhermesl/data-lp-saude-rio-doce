@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma';
 export const getUserById = async (req: any, res: any) => {
   try {
     const { id } = req.params;
+    const { startDate, endDate } = req.query;
 
     if (!id) {
       return res.status(400).send({ message: 'ID do usuário é obrigatório' });
@@ -22,11 +23,30 @@ export const getUserById = async (req: any, res: any) => {
     // Remove o passwordHash da resposta
     const { passwordHash, ...userWithoutPassword } = user;
 
-    // Buscar atendimentos detalhados do usuário
+    // Criar filtro de data para os atendimentos
+    const dateFilter: any = {};
+    
+    if (startDate) {
+      dateFilter.gte = new Date(startDate as string);
+    }
+    
+    if (endDate) {
+      dateFilter.lte = new Date(endDate as string);
+    }
+
+    // Construir where clause para atendimentos
+    const appointmentWhere: any = {
+      responsibleUserId: id,
+    };
+    
+    // Adicionar filtro de data se fornecido
+    if (Object.keys(dateFilter).length > 0) {
+      appointmentWhere.appointmentDate = dateFilter;
+    }
+
+    // Buscar atendimentos detalhados do usuário (filtrado por período se fornecido)
     const appointments = await prisma.appointment.findMany({
-      where: {
-        responsibleUserId: id,
-      },
+      where: appointmentWhere,
       select: {
         id: true,
         externalId: true,

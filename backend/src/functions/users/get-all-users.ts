@@ -5,6 +5,20 @@ import { prisma } from '@/lib/prisma';
 export const getAllUsers = async (req: any, res: any) => {
   try {
     const dao = new UserDAO();
+    
+    // Obter parâmetros de data da query string
+    const { startDate, endDate } = req.query;
+    
+    // Criar filtro de data para os atendimentos
+    const dateFilter: any = {};
+    
+    if (startDate) {
+      dateFilter.gte = new Date(startDate as string);
+    }
+    
+    if (endDate) {
+      dateFilter.lte = new Date(endDate as string);
+    }
 
     // Buscar todos os usuários
     const users = await dao.findMany(
@@ -18,11 +32,19 @@ export const getAllUsers = async (req: any, res: any) => {
       users.map(async (user) => {
         const { passwordHash, ...userWithoutPassword } = user;
 
-        // Buscar atendimentos do usuário
+        // Construir where clause para atendimentos
+        const appointmentWhere: any = {
+          responsibleUserId: user.id,
+        };
+        
+        // Adicionar filtro de data se fornecido
+        if (Object.keys(dateFilter).length > 0) {
+          appointmentWhere.appointmentDate = dateFilter;
+        }
+
+        // Buscar atendimentos do usuário (filtrado por período se fornecido)
         const appointments = await prisma.appointment.findMany({
-          where: {
-            responsibleUserId: user.id,
-          },
+          where: appointmentWhere,
           select: {
             id: true,
             paidValue: true,

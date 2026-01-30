@@ -13,11 +13,13 @@ import {
 import { ArrowLeft, Save, Trash2, TrendingUp, Users, CheckCircle, Clock } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { startOfMonth, endOfMonth } from 'date-fns';
 import { usersApi, User } from '@/services/api/users';
 import { useUserById } from '@/hooks/useUserById';
 import { toast } from 'sonner';
 import { MetricCard } from '@/components/metric-card';
 import { Table } from '@/components/ui/table';
+import { DateRangePicker } from '@/components/date-range-picker';
 
 interface UserDetailsTemplateProps {
   userId: string;
@@ -31,8 +33,17 @@ export const UserDetailsTemplate = ({ userId }: UserDetailsTemplateProps) => {
   const [deleting, setDeleting] = useState(false);
   const [isEditing, setIsEditing] = useState(userId === 'new');
 
-  // Fetch user details with appointments
-  const { data: userDetails, isLoading: isLoadingDetails } = useUserById(userId);
+  // Período pré-selecionado: mês atual
+  const [startDate, setStartDate] = useState<Date>(startOfMonth(new Date()));
+  const [endDate, setEndDate] = useState<Date>(endOfMonth(new Date()));
+
+  // Fetch user details with appointments (filtrado por período)
+  const { data: userDetails, isLoading: isLoadingDetails } = useUserById(userId, startDate, endDate);
+
+  const handleDateChange = (newStartDate: Date, newEndDate: Date) => {
+    setStartDate(newStartDate);
+    setEndDate(newEndDate);
+  };
 
   // TODO: Get user role from auth context
   const isAdmin = true; // This should come from authentication context
@@ -478,103 +489,114 @@ export const UserDetailsTemplate = ({ userId }: UserDetailsTemplateProps) => {
         </div>
 
         {/* Appointment Metrics - Only show for existing users */}
-        {!isNewUser && userDetails && !isLoadingDetails && (
+        {!isNewUser && (
           <>
-            {/* Metrics Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <MetricCard
-                title="Total de Atendimentos"
-                value={userDetails.metrics.totalAppointments.toString()}
-                icon={Users}
-              />
-              <MetricCard
-                title="Vendas Totais"
-                value={new Intl.NumberFormat('pt-BR', {
-                  style: 'currency',
-                  currency: 'BRL',
-                }).format(userDetails.metrics.totalSales)}
-                icon={TrendingUp}
-              />
-              <MetricCard
-                title="Atendimentos Completos"
-                value={userDetails.metrics.completedAppointments.toString()}
-                icon={CheckCircle}
-              />
-              <MetricCard
-                title="Atendimentos Pendentes"
-                value={(userDetails.metrics.pendingAppointments || 0).toString()}
-                icon={Clock}
-              />
-            </div>
+            {/* Date Range Filter */}
+            <DateRangePicker
+              startDate={startDate}
+              endDate={endDate}
+              onDateChange={handleDateChange}
+            />
 
-            {/* Top Patients */}
-            {userDetails.topPatients && userDetails.topPatients.length > 0 && (
-              <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                  Top 5 Pacientes Mais Atendidos
-                </h3>
-                <div className="border rounded-md">
-                  <Table headers={['Paciente', 'Atendimentos', 'Valor Total']}>
-                    {userDetails.topPatients.map((patient) => (
-                      <Table.Row key={patient.patientId}>
-                        <Table.Col className="font-medium">
-                          {patient.patientName}
-                        </Table.Col>
-                        <Table.Col>{patient.count}</Table.Col>
-                        <Table.Col className="font-semibold text-green-600">
-                          {new Intl.NumberFormat('pt-BR', {
-                            style: 'currency',
-                            currency: 'BRL',
-                          }).format(patient.totalValue)}
-                        </Table.Col>
-                      </Table.Row>
-                    ))}
-                  </Table>
+            {userDetails && !isLoadingDetails && (
+              <>
+                {/* Metrics Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <MetricCard
+                    title="Total de Atendimentos"
+                    value={userDetails.metrics.totalAppointments.toString()}
+                    icon={Users}
+                  />
+                  <MetricCard
+                    title="Vendas Totais"
+                    value={new Intl.NumberFormat('pt-BR', {
+                      style: 'currency',
+                      currency: 'BRL',
+                    }).format(userDetails.metrics.totalSales)}
+                    icon={TrendingUp}
+                  />
+                  <MetricCard
+                    title="Atendimentos Completos"
+                    value={userDetails.metrics.completedAppointments.toString()}
+                    icon={CheckCircle}
+                  />
+                  <MetricCard
+                    title="Atendimentos Pendentes"
+                    value={(userDetails.metrics.pendingAppointments || 0).toString()}
+                    icon={Clock}
+                  />
                 </div>
-              </div>
-            )}
 
-            {/* Recent Appointments */}
-            {userDetails.recentAppointments && userDetails.recentAppointments.length > 0 && (
-              <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                  Atendimentos Recentes (Últimos 10)
-                </h3>
-                <div className="border rounded-md">
-                  <Table headers={['Data', 'Paciente', 'Médico', 'Valor', 'Status']}>
-                    {userDetails.recentAppointments.map((appointment) => (
-                      <Table.Row key={appointment.id}>
-                        <Table.Col>
-                          {new Date(appointment.appointmentDate).toLocaleDateString('pt-BR')}
-                        </Table.Col>
-                        <Table.Col className="font-medium">
-                          {appointment.patient?.fullName || '-'}
-                        </Table.Col>
-                        <Table.Col>
-                          {appointment.doctor?.name || '-'}
-                        </Table.Col>
-                        <Table.Col className="font-semibold text-green-600">
-                          {new Intl.NumberFormat('pt-BR', {
-                            style: 'currency',
-                            currency: 'BRL',
-                          }).format(Number(appointment.paidValue || appointment.examValue || 0))}
-                        </Table.Col>
-                        <Table.Col>
-                          <span
-                            className={`px-3 py-1 rounded-full text-sm font-medium ${
-                              appointment.paymentDone
-                                ? 'bg-green-100 text-green-700'
-                                : 'bg-amber-100 text-amber-700'
-                            }`}
-                          >
-                            {appointment.paymentDone ? 'Pago' : 'Pendente'}
-                          </span>
-                        </Table.Col>
-                      </Table.Row>
-                    ))}
-                  </Table>
-                </div>
-              </div>
+                {/* Top Patients */}
+                {userDetails.topPatients && userDetails.topPatients.length > 0 && (
+                  <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                      Top 5 Pacientes Mais Atendidos
+                    </h3>
+                    <div className="border rounded-md">
+                      <Table headers={['Paciente', 'Atendimentos', 'Valor Total']}>
+                        {userDetails.topPatients.map((patient) => (
+                          <Table.Row key={patient.patientId}>
+                            <Table.Col className="font-medium">
+                              {patient.patientName}
+                            </Table.Col>
+                            <Table.Col>{patient.count}</Table.Col>
+                            <Table.Col className="font-semibold text-green-600">
+                              {new Intl.NumberFormat('pt-BR', {
+                                style: 'currency',
+                                currency: 'BRL',
+                              }).format(patient.totalValue)}
+                            </Table.Col>
+                          </Table.Row>
+                        ))}
+                      </Table>
+                    </div>
+                  </div>
+                )}
+
+                {/* Recent Appointments */}
+                {userDetails.recentAppointments && userDetails.recentAppointments.length > 0 && (
+                  <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                      Atendimentos Recentes (Últimos 10)
+                    </h3>
+                    <div className="border rounded-md">
+                      <Table headers={['Data', 'Paciente', 'Médico', 'Valor', 'Status']}>
+                        {userDetails.recentAppointments.map((appointment) => (
+                          <Table.Row key={appointment.id}>
+                            <Table.Col>
+                              {new Date(appointment.appointmentDate).toLocaleDateString('pt-BR')}
+                            </Table.Col>
+                            <Table.Col className="font-medium">
+                              {appointment.patient?.fullName || '-'}
+                            </Table.Col>
+                            <Table.Col>
+                              {appointment.doctor?.name || '-'}
+                            </Table.Col>
+                            <Table.Col className="font-semibold text-green-600">
+                              {new Intl.NumberFormat('pt-BR', {
+                                style: 'currency',
+                                currency: 'BRL',
+                              }).format(Number(appointment.paidValue || appointment.examValue || 0))}
+                            </Table.Col>
+                            <Table.Col>
+                              <span
+                                className={`px-3 py-1 rounded-full text-sm font-medium ${
+                                  appointment.paymentDone
+                                    ? 'bg-green-100 text-green-700'
+                                    : 'bg-amber-100 text-amber-700'
+                                }`}
+                              >
+                                {appointment.paymentDone ? 'Pago' : 'Pendente'}
+                              </span>
+                            </Table.Col>
+                          </Table.Row>
+                        ))}
+                      </Table>
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </>
         )}

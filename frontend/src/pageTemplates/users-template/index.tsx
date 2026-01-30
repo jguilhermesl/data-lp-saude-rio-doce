@@ -5,15 +5,27 @@ import { UsersList } from './users-list';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { useState } from 'react';
+import { startOfMonth, endOfMonth } from 'date-fns';
 
 import { useUsers } from '@/hooks/useUsers';
+import { DateRangePicker } from '@/components/date-range-picker';
 
 export const UsersTemplate = () => {
-  const { data, isLoading, isError, refetch } = useUsers();
+  // Período pré-selecionado: mês atual
+  const [startDate, setStartDate] = useState<Date>(startOfMonth(new Date()));
+  const [endDate, setEndDate] = useState<Date>(endOfMonth(new Date()));
+
+  const { data, isLoading, isError, refetch } = useUsers(startDate, endDate);
   const router = useRouter();
 
   const handleCreateUser = () => {
     router.push('/users/new');
+  };
+
+  const handleDateChange = (newStartDate: Date, newEndDate: Date) => {
+    setStartDate(newStartDate);
+    setEndDate(newEndDate);
   };
 
   // TODO: Get user role from auth context
@@ -33,6 +45,11 @@ export const UsersTemplate = () => {
       }
     >
       <div className="flex flex-col gap-4">
+        <DateRangePicker
+          startDate={startDate}
+          endDate={endDate}
+          onDateChange={handleDateChange}
+        />
         <UsersList
           users={data?.users || []}
           isLoading={isLoading}
