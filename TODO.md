@@ -1,17 +1,12 @@
-# FrontEnd
-- [ ] [Caio] Criar estrutura e tela de Médicos
-- [ ] [Caio] Criar estrutura e tela de Pacientes
-- [ ] [Caio] Criar estrutura e tela de Usuários
-- [ ] [Caio] Criar estrutura e tela de Atendimentos
-- [ ] [Caio] Criar estrutura e tela de Especialidades
+- [x]  Mover ranking de medicos para aba de medicos e tirar atendimentos
+- [x]  [Lista de reativacao] Para reativação deve ser possível filtrar o ultimo procedimento
+- [x]  [Lista de reativacao] Deve ser possivel filtrar por medico\
+- [x]  [Lista de reativacao]  Deve mostrar qual foi o medico e o atendimento do ultimo procedimento
+- [x]  Detalhe de atendimento
+- [x]  Dentro de detalhes do médico a data de procedimento está errada ( exemplo: Priscila Ferreira da Silva e Priscila Santos Real)
+- [x]  Detalhes do médico não tem necessidade de clicar na linha e ja abrir detalhes de atendimento
+- [x]  Total de pacientes no periodo (dashboard)
+- [x]  Revisar numeros de pacientes na dashboard (pacientes)
 
-# BackEnd
-- [ ] [Gui] Criar estrutura da API
-- [ ] [Gui] Mapear estrutura do banco de dados
-- [ ] [Gui] Criar scripts para puxar dados do sistema da LP
-  - [ ] Procedimentos/Especialidades
-  - [ ] Atendimentos
-  - [ ] Pacientes
-  - [ ] Médicos
-- [ ] [Gui] Criar JOBs para execução dos scripts
-- [ ] [Gui] Criar módulo de usuários
+- [ ]  Preciso ver quem foi o funcionário que mais vendeu ( Tela de funcionários x Uusários)
+- [ ]  Como se o procedimento LP Benificios não estivesse aqui ( Revisar porque não estão sendo puxados)

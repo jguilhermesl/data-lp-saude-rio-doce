@@ -8,111 +8,42 @@ import {
   DollarSign,
   FileText,
   User,
+  Stethoscope,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useAppointmentById } from '@/hooks/useAppointmentById';
 
 interface AppointmentDetailsTemplateProps {
   appointmentId: string;
-}
-
-interface AppointmentDetails {
-  hii_cod_atendimento: string;
-  cod_atendimento: string;
-  hid_status: string;
-  status: string;
-  status_obs: string;
-  txt_usuario_responsavel: string;
-  paciente: string;
-  medico: string;
-  dat_atendimento: string;
-  hora_atendimento: string;
-  dat_criacao: string;
-  convenio: string;
-  vlr_exames: string;
-  vlr_pago: string;
-  exames: string;
-  pagamentos_realizados: string;
-  statusAtend: string;
 }
 
 export const AppointmentDetailsTemplate = ({
   appointmentId,
 }: AppointmentDetailsTemplateProps) => {
   const router = useRouter();
-  const [appointment, setAppointment] = useState<AppointmentDetails | null>(
-    null
-  );
-  const [loading, setLoading] = useState(true);
+  const { data: appointment, isLoading, error } = useAppointmentById(appointmentId);
 
-  useEffect(() => {
-    // TODO: Replace with real API call
-    // Example: fetch(`/api/appointments/${appointmentId}`).then(res => res.json())
+  // Debug logs
+  console.log('AppointmentId:', appointmentId);
+  console.log('Loading:', isLoading);
+  console.log('Error:', error);
+  console.log('Appointment:', appointment);
 
-    // Mock data for demonstration
-    setTimeout(() => {
-      setAppointment({
-        hii_cod_atendimento: appointmentId,
-        cod_atendimento: appointmentId,
-        hid_status: 'F',
-        status: 'F',
-        status_obs: 'NAO DESTACAR',
-        txt_usuario_responsavel: 'PATRICIA OLIVEIRA',
-        paciente: 'LINDACI RAMOS DE BRITO',
-        medico: 'ANDRE FELIPE DA SILVA MACEDO',
-        dat_atendimento: '03/12/2025',
-        hora_atendimento: '13:48:51',
-        dat_criacao: '03/12/2025',
-        convenio: 'PARTICULAR',
-        vlr_exames: '140.00',
-        vlr_pago: '140.00',
-        exames: 'CONSULTA CARDIOLOGISTA',
-        pagamentos_realizados: 'CARTAO DEBITO (140.00)',
-        statusAtend:
-          '<span class="btn btn-success btn-sm"><strong>FECHADO</strong></span>',
-      });
-      setLoading(false);
-    }, 500);
-  }, [appointmentId]);
-
-  const formatCurrency = (value: string) => {
-    const numValue = parseFloat(value);
+  const formatCurrency = (value: number | null) => {
+    if (value === null) return 'R$ 0,00';
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
       currency: 'BRL',
-    }).format(numValue);
+    }).format(value);
   };
 
-  const getStatusBadge = (status: string) => {
-    switch (status.toUpperCase()) {
-      case 'F':
-        return (
-          <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
-            FECHADO
-          </span>
-        );
-      case 'A':
-        return (
-          <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
-            ABERTO
-          </span>
-        );
-      case 'C':
-        return (
-          <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-red-100 text-red-800">
-            CANCELADO
-          </span>
-        );
-      default:
-        return (
-          <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-800">
-            {status}
-          </span>
-        );
-    }
+  const formatDate = (date: string) => {
+    // Extract date directly from ISO string without timezone conversion
+    const [year, month, day] = date.split('T')[0].split('-');
+    return `${day}/${month}/${year}`;
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <PrivateLayout
         title="Detalhes do Atendimento"
@@ -125,14 +56,16 @@ export const AppointmentDetailsTemplate = ({
     );
   }
 
-  if (!appointment) {
+  if (error || !appointment) {
     return (
       <PrivateLayout
         title="Detalhes do Atendimento"
         description="Atendimento não encontrado"
       >
         <div className="flex flex-col items-center justify-center h-64 gap-4">
-          <p className="text-muted-foreground">Atendimento não encontrado</p>
+          <p className="text-muted-foreground">
+            {error ? 'Erro ao carregar o atendimento' : 'Atendimento não encontrado'}
+          </p>
           <Button onClick={() => router.push('/appointments')}>
             <ArrowLeft className="mr-2 h-4 w-4" />
             Voltar para lista de atendimentos
@@ -142,10 +75,13 @@ export const AppointmentDetailsTemplate = ({
     );
   }
 
+  const balance = (appointment.examValue || 0) - (appointment.paidValue || 0);
+  const isFullyPaid = balance === 0;
+
   return (
     <PrivateLayout
-      title={`Atendimento #${appointment.cod_atendimento}`}
-      description={`${appointment.paciente} - ${appointment.dat_atendimento}`}
+      title={`Atendimento #${appointment.externalId}`}
+      description={`${appointment.patient?.fullName || 'N/A'} - ${formatDate(appointment.appointmentDate)}`}
     >
       <div className="flex flex-col gap-6">
         {/* Back Button */}
@@ -158,7 +94,15 @@ export const AppointmentDetailsTemplate = ({
             <ArrowLeft className="mr-2 h-4 w-4" />
             Voltar
           </Button>
-          {getStatusBadge(appointment.status)}
+          {isFullyPaid ? (
+            <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
+              PAGO
+            </span>
+          ) : (
+            <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-orange-100 text-orange-800">
+              PENDENTE
+            </span>
+          )}
         </div>
 
         {/* Metrics Cards */}
@@ -167,51 +111,14 @@ export const AppointmentDetailsTemplate = ({
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-gray-500 text-sm font-medium">
-                  Valor dos Exames
-                </h3>
-                <p className="text-3xl font-bold text-gray-900 mt-2">
-                  {formatCurrency(appointment.vlr_exames)}
-                </p>
-              </div>
-              <div className="h-12 w-12 bg-blue-100 rounded-full flex items-center justify-center">
-                <FileText className="h-6 w-6 text-blue-600" />
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-gray-500 text-sm font-medium">
                   Valor Pago
                 </h3>
                 <p className="text-3xl font-bold text-gray-900 mt-2">
-                  {formatCurrency(appointment.vlr_pago)}
+                  {formatCurrency(appointment.paidValue)}
                 </p>
               </div>
               <div className="h-12 w-12 bg-green-100 rounded-full flex items-center justify-center">
                 <DollarSign className="h-6 w-6 text-green-600" />
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-gray-500 text-sm font-medium">
-                  Saldo Devedor
-                </h3>
-                <p className="text-3xl font-bold text-gray-900 mt-2">
-                  {formatCurrency(
-                    (
-                      parseFloat(appointment.vlr_exames) -
-                      parseFloat(appointment.vlr_pago)
-                    ).toFixed(2)
-                  )}
-                </p>
-              </div>
-              <div className="h-12 w-12 bg-orange-100 rounded-full flex items-center justify-center">
-                <DollarSign className="h-6 w-6 text-orange-600" />
               </div>
             </div>
           </div>
@@ -231,7 +138,7 @@ export const AppointmentDetailsTemplate = ({
                   Código do Atendimento
                 </label>
                 <p className="text-base text-gray-900 mt-1 font-mono">
-                  #{appointment.cod_atendimento}
+                  #{appointment.externalId}
                 </p>
               </div>
               <div>
@@ -239,7 +146,7 @@ export const AppointmentDetailsTemplate = ({
                   Data do Atendimento
                 </label>
                 <p className="text-base text-gray-900 mt-1">
-                  {appointment.dat_atendimento}
+                  {formatDate(appointment.appointmentDate)}
                 </p>
               </div>
               <div>
@@ -248,15 +155,7 @@ export const AppointmentDetailsTemplate = ({
                 </label>
                 <p className="text-base text-gray-900 mt-1 flex items-center gap-2">
                   <Clock className="h-4 w-4" />
-                  {appointment.hora_atendimento}
-                </p>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-500">
-                  Data de Criação
-                </label>
-                <p className="text-base text-gray-900 mt-1">
-                  {appointment.dat_criacao}
+                  {appointment.appointmentTime || 'Não informado'}
                 </p>
               </div>
               <div>
@@ -264,9 +163,20 @@ export const AppointmentDetailsTemplate = ({
                   Convênio
                 </label>
                 <p className="text-base text-gray-900 mt-1">
-                  {appointment.convenio}
+                  {appointment.insuranceName || 'Particular'}
                 </p>
               </div>
+              {appointment.specialty && (
+                <div>
+                  <label className="text-sm font-medium text-gray-500">
+                    Especialidade
+                  </label>
+                  <p className="text-base text-gray-900 mt-1 flex items-center gap-2">
+                    <Stethoscope className="h-4 w-4" />
+                    {appointment.specialty.name}
+                  </p>
+                </div>
+              )}
             </div>
           </div>
 
@@ -282,75 +192,86 @@ export const AppointmentDetailsTemplate = ({
                   Paciente
                 </label>
                 <p className="text-base text-gray-900 mt-1 font-medium">
-                  {appointment.paciente}
+                  {appointment.patient?.fullName || 'N/A'}
                 </p>
+                {appointment.patient?.cpf && (
+                  <p className="text-sm text-gray-600 mt-1">
+                    CPF: {appointment.patient.cpf}
+                  </p>
+                )}
               </div>
               <div>
                 <label className="text-sm font-medium text-gray-500">
                   Médico Responsável
                 </label>
                 <p className="text-base text-gray-900 mt-1 font-medium">
-                  {appointment.medico}
+                  {appointment.doctor?.name || 'N/A'}
                 </p>
+                {appointment.doctor?.crm && (
+                  <p className="text-sm text-gray-600 mt-1">
+                    CRM: {appointment.doctor.crm}
+                  </p>
+                )}
               </div>
-              <div>
-                <label className="text-sm font-medium text-gray-500">
-                  Usuário Responsável
-                </label>
-                <p className="text-base text-gray-900 mt-1">
-                  {appointment.txt_usuario_responsavel}
-                </p>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-500">
-                  Observação de Status
-                </label>
-                <p className="text-base text-gray-900 mt-1">
-                  {appointment.status_obs}
-                </p>
-              </div>
+              {appointment.responsibleUser && (
+                <div>
+                  <label className="text-sm font-medium text-gray-500">
+                    Usuário Responsável
+                  </label>
+                  <p className="text-base text-gray-900 mt-1">
+                    {appointment.responsibleUser.name}
+                  </p>
+                  <p className="text-sm text-gray-600 mt-1">
+                    {appointment.responsibleUser.email}
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         </div>
 
-        {/* Procedimentos e Pagamentos */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Procedimentos */}
-          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-              <FileText className="h-5 w-5" />
-              Procedimentos/Exames
-            </h3>
-            <div className="space-y-3">
-              <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-                <p className="text-base text-gray-900 font-medium">
-                  {appointment.exames}
-                </p>
-                <p className="text-sm text-gray-600 mt-1">
-                  Valor: {formatCurrency(appointment.vlr_exames)}
+        {/* Procedimentos */}
+        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+            <FileText className="h-5 w-5" />
+            Procedimentos/Exames
+          </h3>
+          <div className="space-y-3">
+            {appointment.appointmentProcedures && appointment.appointmentProcedures.length > 0 ? (
+              appointment.appointmentProcedures.map((ap) => (
+                <div
+                  key={ap.id}
+                  className="p-4 bg-blue-50 rounded-lg border border-blue-200"
+                >
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <p className="text-base text-gray-900 font-medium">
+                        {ap.procedure.name}
+                      </p>
+                      {ap.procedure.code && (
+                        <p className="text-sm text-gray-600 mt-1">
+                          Código: {ap.procedure.code}
+                        </p>
+                      )}
+                    </div>
+                    {ap.procedure.defaultPrice && (
+                      <p className="text-sm text-gray-900 font-medium">
+                        {formatCurrency(ap.procedure.defaultPrice)}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                <p className="text-base text-gray-600">
+                  {appointment.examsRaw || 'Nenhum procedimento específico registrado'}
                 </p>
               </div>
-            </div>
-          </div>
-
-          {/* Pagamentos */}
-          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-              <DollarSign className="h-5 w-5" />
-              Formas de Pagamento
-            </h3>
-            <div className="space-y-3">
-              <div className="p-4 bg-green-50 rounded-lg border border-green-200">
-                <p className="text-base text-gray-900 font-medium">
-                  {appointment.pagamentos_realizados}
-                </p>
-                <p className="text-sm text-gray-600 mt-1">
-                  Total Pago: {formatCurrency(appointment.vlr_pago)}
-                </p>
-              </div>
-            </div>
+            )}
           </div>
         </div>
+
       </div>
     </PrivateLayout>
   );

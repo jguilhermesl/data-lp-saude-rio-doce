@@ -45,11 +45,11 @@ export const PatientsMetricCards = ({
         </p>
       </div>
 
-      {/* Taxa de Retorno */}
+      {/* Pacientes Recorrentes */}
       <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-        <h3 className="text-gray-500 text-sm font-medium">Taxa de Retorno</h3>
+        <h3 className="text-gray-500 text-sm font-medium">Pacientes Recorrentes</h3>
         <p className="text-3xl font-bold text-gray-900 mt-2">
-          {formatPercentage(summary?.returnRate || 0)}
+          {summary?.recurringPatients || 0}
         </p>
       </div>
     </div>

@@ -66,9 +66,6 @@ export const getDoctorsMetrics = async (req: any, res: any) => {
       const appointmentCount = doctor.appointments.length;
       const averageTicket = appointmentCount > 0 ? totalRevenue / appointmentCount : 0;
 
-      // Calcular taxa de retorno
-      const returnRate = await doctorDAO.getDoctorReturnRate(doctor.id);
-
       // Calcular produtividade
       const productivity = await doctorDAO.getDoctorProductivity(doctor.id, startDate, endDate);
 
@@ -92,9 +89,6 @@ export const getDoctorsMetrics = async (req: any, res: any) => {
         receivedRevenue,
         pendingRevenue: totalRevenue - receivedRevenue,
         averageTicket,
-        returnRate: returnRate.returnRate,
-        returningPatientsCount: returnRate.returningPatients,
-        newPatientsCount: returnRate.newPatients,
         productivity: {
           appointmentsPerDay: productivity.appointmentsPerDay,
           totalDays: productivity.days,
@@ -110,15 +104,9 @@ export const getDoctorsMetrics = async (req: any, res: any) => {
     // Filtrar médicos com dados relevantes para cada cálculo do summary
     const doctorsWithRevenue = metrics.filter(m => m.totalRevenue > 0);
     const doctorsWithAppointments = metrics.filter(m => m.appointmentCount > 0);
-    const doctorsWithPatients = metrics.filter(m => m.returningPatientsCount + m.newPatientsCount > 0);
 
     // Identificar top performers (apenas entre os que têm dados relevantes)
     const topByRevenue = doctorsWithRevenue.length > 0 ? doctorsWithRevenue[0] : null;
-    const topByReturnRate = doctorsWithPatients.length > 0
-      ? doctorsWithPatients.reduce((prev, current) =>
-          prev.returnRate > current.returnRate ? prev : current
-        )
-      : null;
     const topByAppointments = doctorsWithAppointments.length > 0
       ? doctorsWithAppointments.reduce((prev, current) =>
           prev.appointmentCount > current.appointmentCount ? prev : current
@@ -134,10 +122,6 @@ export const getDoctorsMetrics = async (req: any, res: any) => {
       ? doctorsWithAppointments.reduce((sum, m) => sum + m.appointmentCount, 0) / doctorsWithAppointments.length
       : 0;
     
-    const avgReturnRate = doctorsWithPatients.length > 0
-      ? doctorsWithPatients.reduce((sum, m) => sum + m.returnRate, 0) / doctorsWithPatients.length
-      : 0;
-    
     const avgTicket = doctorsWithAppointments.length > 0
       ? doctorsWithAppointments.reduce((sum, m) => sum + m.averageTicket, 0) / doctorsWithAppointments.length
       : 0;
@@ -148,20 +132,12 @@ export const getDoctorsMetrics = async (req: any, res: any) => {
         totalDoctors: metrics.length, // Total de TODOS os médicos
         avgRevenue,
         avgAppointments,
-        avgReturnRate,
         avgTicket,
         topByRevenue: topByRevenue
           ? {
               doctorId: topByRevenue.doctorId,
               name: topByRevenue.name,
               totalRevenue: topByRevenue.totalRevenue,
-            }
-          : null,
-        topByReturnRate: topByReturnRate
-          ? {
-              doctorId: topByReturnRate.doctorId,
-              name: topByReturnRate.name,
-              returnRate: topByReturnRate.returnRate,
             }
           : null,
         topByAppointments: topByAppointments

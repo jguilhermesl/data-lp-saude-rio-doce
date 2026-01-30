@@ -107,7 +107,7 @@ export function PatientsTableFilters({
       </div>
 
       <div className="flex items-center gap-2 flex-wrap">
-        <span className="text-sm font-semibold">Filtros Adicionais:</span>
+        <span className="text-sm font-semibold">Filtros:</span>
 
         {/* Busca geral (nome, CPF, telefone) */}
         <Input 

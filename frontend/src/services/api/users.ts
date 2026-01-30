@@ -8,6 +8,13 @@ export interface UsersSummary {
   activeCount: number;
 }
 
+export interface UserMetrics {
+  totalAppointments: number;
+  totalSales: number;
+  completedAppointments: number;
+  pendingAppointments?: number;
+}
+
 export interface User {
   id: string;
   email: string;
@@ -17,6 +24,7 @@ export interface User {
   active: boolean;
   createdAt: string;
   updatedAt: string;
+  metrics?: UserMetrics;
 }
 
 export interface UsersResponse {
@@ -41,9 +49,54 @@ export interface UpdateUserData {
   phone?: string;
 }
 
+export interface MonthlyStats {
+  month: string;
+  count: number;
+  sales: number;
+}
+
+export interface TopPatient {
+  patientId: string;
+  patientName: string;
+  count: number;
+  totalValue: number;
+}
+
+export interface RecentAppointment {
+  id: string;
+  externalId: string;
+  appointmentDate: string;
+  appointmentTime: string | null;
+  paidValue: number | null;
+  examValue: number | null;
+  paymentDone: boolean;
+  insuranceName: string | null;
+  patient: {
+    id: string;
+    fullName: string;
+  } | null;
+  doctor: {
+    id: string;
+    name: string;
+  } | null;
+}
+
+export interface UserDetailsResponse {
+  user: User;
+  metrics: UserMetrics;
+  monthlyStats: MonthlyStats[];
+  topPatients: TopPatient[];
+  recentAppointments: RecentAppointment[];
+}
+
 export const usersApi = {
   getAll: async (): Promise<UsersResponse> => {
     const response = await api.get<{ data: UsersResponse }>('/users');
+    return response.data.data;
+  },
+
+  getById: async (id: string): Promise<UserDetailsResponse> => {
+    const response = await api.get<{ data: UserDetailsResponse }>(`/users/${id}`);
     return response.data.data;
   },
 

@@ -1,13 +1,15 @@
 'use client';
 
-import { DoctorAppointmentMetrics } from '@/services/api/appointments';
+import { DoctorMetrics } from '@/services/api/doctors';
+import { useState } from 'react';
 
-interface AppointmentsDoctorChartProps {
-  data: DoctorAppointmentMetrics[];
+interface DoctorsRankingChartProps {
+  data: DoctorMetrics[];
   isLoading: boolean;
 }
 
-export const AppointmentsDoctorChart = ({ data, isLoading }: AppointmentsDoctorChartProps) => {
+export const DoctorsRankingChart = ({ data, isLoading }: DoctorsRankingChartProps) => {
+  const [isExpanded, setIsExpanded] = useState(true);
   if (isLoading) {
     return (
       <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
@@ -66,18 +68,46 @@ export const AppointmentsDoctorChart = ({ data, isLoading }: AppointmentsDoctorC
   const totalRevenue = topDoctors.reduce((sum, doc) => sum + (doc.totalRevenue || 0), 0);
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-        <h3 className="text-lg font-semibold text-gray-900">
-          Top 10 Médicos por Faturamento
-        </h3>
+    <div className={`bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden transition-all duration-300 ${isExpanded ? 'p-6' : 'p-4'}`}>
+      <div className={`flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 ${isExpanded ? 'mb-6' : 'mb-0'}`}>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="flex-shrink-0 p-1 hover:bg-gray-100 rounded-md transition-colors"
+            aria-label={isExpanded ? 'Retrair' : 'Expandir'}
+          >
+            <svg
+              className={`w-5 h-5 text-gray-600 transition-transform duration-200 ${
+                isExpanded ? 'rotate-0' : '-rotate-90'
+              }`}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M19 9l-7 7-7-7"
+              />
+            </svg>
+          </button>
+          <h3 className="text-lg font-semibold text-gray-900">
+            Top 10 Médicos por Faturamento
+          </h3>
+        </div>
         <div className="text-left sm:text-right">
           <p className="text-sm text-gray-500">Faturamento Total</p>
           <p className="text-xl font-bold text-gray-900">{formatCurrency(totalRevenue)}</p>
         </div>
       </div>
       
-      <div className="space-y-4 overflow-x-hidden">
+      <div
+        className={`transition-all duration-300 ease-in-out overflow-hidden ${
+          isExpanded ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0'
+        }`}
+      >
+        <div className="space-y-4 overflow-x-hidden">
         {topDoctors.map((doctor, index) => {
           const revenue = doctor.totalRevenue || 0;
           const percentage = maxRevenue > 0 ? ((revenue / maxRevenue) * 100) : 0;
@@ -125,6 +155,7 @@ export const AppointmentsDoctorChart = ({ data, isLoading }: AppointmentsDoctorC
             </div>
           );
         })}
+        </div>
       </div>
     </div>
   );

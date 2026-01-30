@@ -33,10 +33,9 @@ export const getPatientsMetrics = async (req: any, res: any) => {
     const skip = (page - 1) * limit;
 
     // Buscar métricas em paralelo
-    const [segmentation, patientsAtRisk, returnRateData] = await Promise.all([
+    const [segmentation, patientsAtRisk] = await Promise.all([
       patientDAO.getPatientSegmentation(startDate, endDate),
       patientDAO.getPatientsAtRisk(3),
-      patientDAO.getReturnRate(startDate, endDate),
     ]);
 
     // Calcular métricas de segmentação
@@ -80,10 +79,7 @@ export const getPatientsMetrics = async (req: any, res: any) => {
     }));
 
     // Pacientes em risco de churn
-    const churnRate = returnRateData.totalPatients > 0 ? (patientsAtRisk.length / returnRateData.totalPatients) * 100 : 0;
-
-    // Taxa de retorno
-    const returnRate = returnRateData.returnRate;
+    const churnRate = totalPatients > 0 ? (patientsAtRisk.length / totalPatients) * 100 : 0;
 
     // Distribuição por faixa de LTV
     const ltvRanges = {
@@ -294,100 +290,11 @@ export const getPatientsMetrics = async (req: any, res: any) => {
       lastAppointmentDate: patient.lastAppointmentDate,
     }));
 
-    // Calcular taxa de retorno baseada em TODOS os pacientes filtrados (não só da página)
-    // Buscar appointmentCount de todos os pacientes filtrados
-    let returnRateQuery = `
-      SELECT COUNT(*) as total_with_return FROM (
-        SELECT 
-          p.id,
-          COUNT(a.id) as "appointmentCount"
-        FROM patients p
-        LEFT JOIN appointments a ON a."patientId" = p.id
-          AND a."appointmentDate" >= $1
-          AND a."appointmentDate" <= $2
-    `;
-    
-    const returnRateParams: any[] = [startDate, endDate];
-    let returnRateParamIndex = 3;
-    
-    if (search) {
-      returnRateQuery += ` WHERE (p."fullName" ILIKE $${returnRateParamIndex} OR p.cpf ILIKE $${returnRateParamIndex} OR p."mobilePhone" ILIKE $${returnRateParamIndex})`;
-      returnRateParams.push(`%${search}%`);
-      returnRateParamIndex++;
-    }
-    
-    returnRateQuery += ` GROUP BY p.id`;
-    
-    const returnRateHavingConditions: string[] = [];
-    if (minSpent !== undefined) {
-      returnRateHavingConditions.push(`COALESCE(SUM(a."paidValue"), 0) >= $${returnRateParamIndex}`);
-      returnRateParams.push(minSpent);
-      returnRateParamIndex++;
-    }
-    if (maxSpent !== undefined) {
-      returnRateHavingConditions.push(`COALESCE(SUM(a."paidValue"), 0) <= $${returnRateParamIndex}`);
-      returnRateParams.push(maxSpent);
-      returnRateParamIndex++;
-    }
-    if (returnRateHavingConditions.length > 0) {
-      returnRateQuery += ` HAVING ${returnRateHavingConditions.join(' AND ')}`;
-    }
-    
-    // Filtrar por appointmentCount > 1 (pacientes que retornaram)
-    returnRateQuery += `) subq WHERE subq."appointmentCount" > 1`;
-    
-    // Se há filtro de data do último atendimento, precisa refazer a query
-    if (lastAppointmentStartDate || lastAppointmentEndDate) {
-      returnRateQuery = `
-        SELECT COUNT(*) as total_with_return FROM (
-          SELECT subq.id, subq."appointmentCount" FROM (
-            SELECT 
-              p.id,
-              COUNT(a.id) as "appointmentCount",
-              MAX(a."appointmentDate") as "lastAppointmentDate"
-            FROM patients p
-            LEFT JOIN appointments a ON a."patientId" = p.id
-              AND a."appointmentDate" >= $1
-              AND a."appointmentDate" <= $2
-      `;
-      
-      if (search) {
-        returnRateQuery += ` WHERE (p."fullName" ILIKE $3 OR p.cpf ILIKE $3 OR p."mobilePhone" ILIKE $3)`;
-      }
-      
-      returnRateQuery += ` GROUP BY p.id`;
-      
-      if (returnRateHavingConditions.length > 0) {
-        returnRateQuery += ` HAVING ${returnRateHavingConditions.join(' AND ')}`;
-      }
-      
-      returnRateQuery += `) subq WHERE subq."appointmentCount" > 1`;
-      
-      if (lastAppointmentStartDate) {
-        returnRateQuery += ` AND subq."lastAppointmentDate" >= $${returnRateParamIndex}`;
-        returnRateParams.push(lastAppointmentStartDate);
-        returnRateParamIndex++;
-      }
-      
-      if (lastAppointmentEndDate) {
-        returnRateQuery += ` AND subq."lastAppointmentDate" <= $${returnRateParamIndex}`;
-        returnRateParams.push(lastAppointmentEndDate);
-        returnRateParamIndex++;
-      }
-      
-      returnRateQuery += `) final_subq`;
-    }
-    
-    const returnRateResult = await prisma.$queryRawUnsafe<Array<{ total_with_return: bigint }>>(returnRateQuery, ...returnRateParams);
-    const filteredPatientsWithReturn = Number(returnRateResult[0]?.total_with_return || 0);
-    const filteredReturnRate = totalPatientsCount > 0 ? (filteredPatientsWithReturn / totalPatientsCount) * 100 : 0;
-
     // Resposta
     const response = {
       summary: {
         totalPatients: totalPatientsCount, // Total de pacientes filtrados
         recurringPatients: recurringPatientsCount,
-        returnRate: filteredReturnRate, // Taxa de retorno dos pacientes filtrados
         vipPatientsCount: vipPatientsFormatted.length,
         patientsAtRiskCount: patientsAtRisk.length,
         churnRate,

@@ -1,8 +1,5 @@
 'use client';
 import { Table } from '@/components/ui/table/table';
-import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
-import { useRouter } from 'next/navigation';
 
 interface Procedure {
   id: string;
@@ -33,12 +30,6 @@ interface AppointmentsTableRowProps {
 }
 
 export const AppointmentsTableRow = ({ appointment }: AppointmentsTableRowProps) => {
-  const router = useRouter();
-
-  const handleClick = () => {
-    router.push(`/appointments/${appointment.id}`);
-  };
-
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
@@ -47,11 +38,14 @@ export const AppointmentsTableRow = ({ appointment }: AppointmentsTableRowProps)
   };
 
   return (
-    <Table.Row onClick={handleClick}>
+    <Table.Row>
       <Table.Col>
         <div className="flex flex-col">
           <span className="font-medium">
-            {format(new Date(appointment.appointmentDate), 'dd/MM/yyyy', { locale: ptBR })}
+            {(() => {
+              const [year, month, day] = appointment.appointmentDate.split('T')[0].split('-');
+              return `${day}/${month}/${year}`;
+            })()}
           </span>
           {appointment.appointmentTime && (
             <span className="text-xs text-gray-500">

@@ -1,11 +1,9 @@
 'use client';
 import { PrivateLayout } from '@/components/private-layout';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, DollarSign, Users, Calendar, TrendingUp } from 'lucide-react';
+import { ArrowLeft, DollarSign, Calendar, TrendingUp } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { usePatientById } from '@/hooks/usePatientById';
-import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
 import { AppointmentsList } from './appointments-list';
 
 interface PatientDetailsTemplateProps {
@@ -26,7 +24,9 @@ export const PatientDetailsTemplate = ({
   };
 
   const formatDate = (date: string) => {
-    return format(new Date(date), 'dd/MM/yyyy', { locale: ptBR });
+    // Extract date directly from ISO string without timezone conversion
+    const [year, month, day] = date.split('T')[0].split('-');
+    return `${day}/${month}/${year}`;
   };
 
   if (isLoading) {

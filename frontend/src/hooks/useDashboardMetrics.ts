@@ -20,17 +20,11 @@ interface DashboardMetrics {
       crm: string | null;
       totalRevenue: number;
     }>;
-    bestReturnRate: {
-      doctorId: string;
-      name: string;
-      returnRate: number;
-    };
   };
   patients: {
     total: number;
     newPatients: number;
     recurringPatients: number;
-    returnRate: number;
   };
   procedures: {
     total: number;

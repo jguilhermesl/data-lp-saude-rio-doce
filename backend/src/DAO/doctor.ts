@@ -104,35 +104,6 @@ export class DoctorDAO {
     }
   }
 
-  /**
-   * Taxa de retorno por médico (pacientes que voltaram no período)
-   */
-  async getDoctorReturnRate(doctorId: string, startDate: Date, endDate: Date) {
-    try {
-      // Buscar todos os pacientes únicos do médico no período
-      const patientAppointments = await prisma.appointment.groupBy({
-        by: ['patientId'],
-        where: { 
-          doctorId,
-          appointmentDate: { gte: startDate, lte: endDate },
-        },
-        _count: { id: true },
-      });
-
-      const totalPatients = patientAppointments.length;
-      const returningPatients = patientAppointments.filter(p => p._count.id > 1).length;
-
-      return {
-        totalPatients,
-        returningPatients,
-        newPatients: totalPatients - returningPatients,
-        returnRate: totalPatients > 0 ? (returningPatients / totalPatients) * 100 : 0,
-      };
-    } catch (error) {
-      console.error('Error in DoctorDAO.getDoctorReturnRate:', error);
-      throw error;
-    }
-  }
 
   /**
    * Médicos com mais atendimentos

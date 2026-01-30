@@ -9,6 +9,7 @@ import { PrivateLayout } from '@/components/private-layout';
 import { ProceduresTableFilters } from './procedures-table-filter';
 import { ProceduresList } from './procedures-list';
 import { ProceduresMetricCards } from './procedures-metric-cards';
+import { ProceduresExportButtons } from './procedures-export-buttons';
 import { proceduresApi } from '@/services/api/procedures';
 
 export const ProceduresTemplate = () => {
@@ -72,12 +73,24 @@ export const ProceduresTemplate = () => {
       description="Análise de procedimentos por faturamento e volume"
     >
       <div className="flex flex-col gap-6">
-        <ProceduresTableFilters
-          dateRange={dateRange}
-          search={search}
-          onDateRangeChange={setDateRange}
-          onSearchChange={setSearch}
-        />
+        {/* Filtros e Botões de Exportação */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <ProceduresTableFilters
+            dateRange={dateRange}
+            search={search}
+            onDateRangeChange={setDateRange}
+            onSearchChange={setSearch}
+          />
+          <ProceduresExportButtons
+            summary={data?.summary}
+            procedures={data?.procedures || []}
+            topSelling={data?.topSelling || []}
+            topRevenue={data?.topRevenue || []}
+            dateRange={dateRange}
+            search={search}
+            isLoading={isLoading}
+          />
+        </div>
 
         <ProceduresMetricCards
           summary={data?.summary}

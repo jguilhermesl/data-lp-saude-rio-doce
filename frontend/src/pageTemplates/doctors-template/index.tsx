@@ -5,6 +5,7 @@ import { DoctorsList } from './doctors-list';
 import { DoctorsTableFilters } from './doctors-table-filter';
 import { DoctorsMetricCards } from './doctors-metric-cards';
 import { DoctorsExportButtons } from './doctors-export-buttons';
+import { DoctorsRankingChart } from './doctors-ranking-chart';
 import { PrivateLayout } from '@/components/private-layout';
 import { useDoctorsMetrics } from '@/hooks/useDoctorsMetrics';
 
@@ -75,6 +76,11 @@ export const DoctorsTemplate = () => {
           summary={data?.summary} 
           isLoading={isLoading} 
           isError={isError} 
+        />
+        
+        <DoctorsRankingChart 
+          data={data?.doctors || []} 
+          isLoading={isLoading} 
         />
         
         <DoctorsList 

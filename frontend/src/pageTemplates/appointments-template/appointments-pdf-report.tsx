@@ -6,11 +6,12 @@ import {
   StyleSheet,
   Font,
 } from '@react-pdf/renderer';
-import { DoctorMetrics, DoctorMetricsSummary } from '@/services/api/doctors';
+import { AppointmentMetricsSummary, Appointment } from '@/services/api/appointments';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { type DateRange } from 'react-day-picker';
 
-// Registrar fontes (opcional, mas melhora a aparência)
+// Registrar fontes
 Font.register({
   family: 'Roboto',
   fonts: [
@@ -83,7 +84,7 @@ const styles = StyleSheet.create({
     marginBottom: 15,
   },
   metricCard: {
-    width: '18%',
+    width: '23%',
     backgroundColor: '#f8fafc',
     padding: 10,
     borderRadius: 6,
@@ -106,63 +107,6 @@ const styles = StyleSheet.create({
     fontSize: 7,
     color: '#94a3b8',
     marginTop: 3,
-  },
-  highlightsGrid: {
-    flexDirection: 'row',
-    gap: 10,
-    marginBottom: 15,
-  },
-  highlightCard: {
-    flex: 1,
-    padding: 12,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderStyle: 'solid',
-  },
-  highlightCardGreen: {
-    backgroundColor: '#f0fdf4',
-    borderColor: '#bbf7d0',
-  },
-  highlightCardBlue: {
-    backgroundColor: '#eff6ff',
-    borderColor: '#bfdbfe',
-  },
-  highlightCardPurple: {
-    backgroundColor: '#faf5ff',
-    borderColor: '#e9d5ff',
-  },
-  highlightTitle: {
-    fontSize: 9,
-    fontWeight: 700,
-    marginBottom: 6,
-  },
-  highlightTitleGreen: {
-    color: '#166534',
-  },
-  highlightTitleBlue: {
-    color: '#1e40af',
-  },
-  highlightTitlePurple: {
-    color: '#6b21a8',
-  },
-  highlightName: {
-    fontSize: 10,
-    color: '#1e293b',
-    fontWeight: 500,
-    marginBottom: 4,
-  },
-  highlightValue: {
-    fontSize: 12,
-    fontWeight: 700,
-  },
-  highlightValueGreen: {
-    color: '#15803d',
-  },
-  highlightValueBlue: {
-    color: '#1d4ed8',
-  },
-  highlightValuePurple: {
-    color: '#7c3aed',
   },
   table: {
     marginTop: 10,
@@ -189,19 +133,20 @@ const styles = StyleSheet.create({
     backgroundColor: '#f8fafc',
   },
   tableCell: {
-    fontSize: 8,
+    fontSize: 7,
     color: '#334155',
   },
   tableCellBold: {
     fontWeight: 700,
     color: '#1e293b',
   },
-  col1: { width: '22%' },
-  col2: { width: '18%' },
-  col3: { width: '15%' },
-  col4: { width: '12%' },
-  col5: { width: '15%' },
-  col6: { width: '18%' },
+  col1: { width: '10%' }, // Data
+  col2: { width: '20%' }, // Paciente
+  col3: { width: '20%' }, // Médico
+  col4: { width: '15%' }, // Especialidade
+  col5: { width: '15%' }, // Convênio
+  col6: { width: '10%' }, // Valor
+  col7: { width: '10%' }, // Status
   footer: {
     position: 'absolute',
     bottom: 30,
@@ -224,19 +169,19 @@ const styles = StyleSheet.create({
   },
 });
 
-interface DoctorsPDFReportProps {
-  summary: DoctorMetricsSummary;
-  doctors: DoctorMetrics[];
-  dateRange: { from?: Date; to?: Date };
+interface AppointmentsPDFReportProps {
+  summary: AppointmentMetricsSummary;
+  appointments: Appointment[];
+  dateRange?: DateRange;
   search?: string;
 }
 
-export const DoctorsPDFReport = ({
+export const AppointmentsPDFReport = ({
   summary,
-  doctors,
+  appointments,
   dateRange,
   search,
-}: DoctorsPDFReportProps) => {
+}: AppointmentsPDFReportProps) => {
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
@@ -244,24 +189,25 @@ export const DoctorsPDFReport = ({
     }).format(value);
   };
 
-  const formatPercentage = (value: number) => {
-    return `${value.toFixed(1)}%`;
-  };
-
   const formatDate = (date: Date) => {
     return format(date, "dd 'de' MMMM 'de' yyyy", { locale: ptBR });
   };
 
-  const periodText = dateRange.from && dateRange.to
+  const periodText = dateRange?.from && dateRange?.to
     ? `${formatDate(dateRange.from)} - ${formatDate(dateRange.to)}`
     : 'Período não especificado';
 
+  // Dividir atendimentos em páginas (máximo 20 por página)
+  const itemsPerPage = 20;
+  const pages = Math.ceil(appointments.length / itemsPerPage);
+
   return (
     <Document>
+      {/* Primeira Página: Métricas e início da listagem */}
       <Page size="A4" style={styles.page} orientation="landscape">
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.title}>Relatório de Médicos</Text>
+          <Text style={styles.title}>Relatório de Atendimentos</Text>
           <Text style={styles.subtitle}>
             Sistema de Gestão - Saúde Rio Doce
           </Text>
@@ -279,125 +225,101 @@ export const DoctorsPDFReport = ({
           <Text style={styles.sectionTitle}>Visão Geral - Métricas do Período</Text>
           <View style={styles.metricsGrid}>
             <View style={styles.metricCard}>
-              <Text style={styles.metricLabel}>Total de Médicos</Text>
-              <Text style={styles.metricValue}>{summary.totalDoctors}</Text>
+              <Text style={styles.metricLabel}>Total de Atendimentos</Text>
+              <Text style={styles.metricValue}>{summary.totalAppointments}</Text>
               <Text style={styles.metricDescription}>
-                Médicos cadastrados
+                No período selecionado
               </Text>
             </View>
 
             <View style={styles.metricCard}>
-              <Text style={styles.metricLabel}>Faturamento Médio</Text>
+              <Text style={styles.metricLabel}>Faturamento Total</Text>
               <Text style={styles.metricValue}>
-                {formatCurrency(summary.avgRevenue)}
+                {formatCurrency(summary.totalRevenue)}
               </Text>
               <Text style={styles.metricDescription}>
-                Por médico no período
-              </Text>
-            </View>
-
-            <View style={styles.metricCard}>
-              <Text style={styles.metricLabel}>Atendimentos Médios</Text>
-              <Text style={styles.metricValue}>
-                {Math.round(summary.avgAppointments)}
-              </Text>
-              <Text style={styles.metricDescription}>
-                Por médico no período
+                Receita do período
               </Text>
             </View>
 
             <View style={styles.metricCard}>
               <Text style={styles.metricLabel}>Ticket Médio</Text>
               <Text style={styles.metricValue}>
-                {formatCurrency(summary.avgTicket)}
+                {formatCurrency(summary.averageTicket)}
               </Text>
               <Text style={styles.metricDescription}>
-                Valor por consulta
+                Por atendimento
+              </Text>
+            </View>
+
+            <View style={styles.metricCard}>
+              <Text style={styles.metricLabel}>Atendimentos Hoje</Text>
+              <Text style={styles.metricValue}>{summary.todayAppointments}</Text>
+              <Text style={styles.metricDescription}>
+                Agendados para hoje
               </Text>
             </View>
           </View>
         </View>
 
-        {/* Destaques */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Destaques do Período</Text>
-          <View style={styles.highlightsGrid}>
-            {summary.topByRevenue && (
-              <View style={[styles.highlightCard, styles.highlightCardGreen]}>
-                <Text style={[styles.highlightTitle, styles.highlightTitleGreen]}>
-                  Maior Faturamento
-                </Text>
-                <Text style={styles.highlightName}>
-                  {summary.topByRevenue.name}
-                </Text>
-                <Text style={[styles.highlightValue, styles.highlightValueGreen]}>
-                  {formatCurrency(summary.topByRevenue.totalRevenue)}
-                </Text>
-              </View>
-            )}
-
-            {summary.topByAppointments && (
-              <View style={[styles.highlightCard, styles.highlightCardBlue]}>
-                <Text style={[styles.highlightTitle, styles.highlightTitleBlue]}>
-                  Mais Atendimentos
-                </Text>
-                <Text style={styles.highlightName}>
-                  {summary.topByAppointments.name}
-                </Text>
-                <Text style={[styles.highlightValue, styles.highlightValueBlue]}>
-                  {summary.topByAppointments.appointmentCount} atendimentos
-                </Text>
-              </View>
-            )}
-          </View>
-        </View>
-
-        {/* Tabela de Médicos */}
+        {/* Tabela de Atendimentos */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>
-            Detalhamento por Médico ({doctors.length} médicos)
+            Detalhamento dos Atendimentos ({appointments.length} registros)
           </Text>
           <View style={styles.table}>
             <View style={styles.tableHeader}>
               <Text style={[styles.tableCell, styles.tableCellBold, styles.col1]}>
-                Médico
+                Data
               </Text>
               <Text style={[styles.tableCell, styles.tableCellBold, styles.col2]}>
-                Especialidade
+                Paciente
               </Text>
               <Text style={[styles.tableCell, styles.tableCellBold, styles.col3]}>
-                Faturamento
+                Médico
               </Text>
               <Text style={[styles.tableCell, styles.tableCellBold, styles.col4]}>
-                Atendimentos
+                Especialidade
               </Text>
               <Text style={[styles.tableCell, styles.tableCellBold, styles.col5]}>
-                Ticket Médio
+                Convênio
+              </Text>
+              <Text style={[styles.tableCell, styles.tableCellBold, styles.col6]}>
+                Valor
+              </Text>
+              <Text style={[styles.tableCell, styles.tableCellBold, styles.col7]}>
+                Status
               </Text>
             </View>
 
-            {doctors.map((doctor, index) => (
+            {appointments.slice(0, itemsPerPage).map((appointment, index) => (
               <View
-                key={doctor.doctorId}
+                key={appointment.id}
                 style={[
                   styles.tableRow,
                   ...(index % 2 === 0 ? [styles.tableRowEven] : []),
                 ]}
               >
                 <Text style={[styles.tableCell, styles.col1]}>
-                  {doctor.name}
+                  {appointment.appointmentDate}
                 </Text>
                 <Text style={[styles.tableCell, styles.col2]}>
-                  {doctor.specialties.map((s) => s.name).join(', ') || 'N/A'}
+                  {appointment.patient?.fullName || 'N/A'}
                 </Text>
                 <Text style={[styles.tableCell, styles.col3]}>
-                  {formatCurrency(doctor.totalRevenue)}
+                  {appointment.doctor?.name || 'N/A'}
                 </Text>
                 <Text style={[styles.tableCell, styles.col4]}>
-                  {doctor.appointmentCount}
+                  {appointment.specialty?.name || 'N/A'}
                 </Text>
                 <Text style={[styles.tableCell, styles.col5]}>
-                  {formatCurrency(doctor.averageTicket)}
+                  {appointment.insuranceName || 'Particular'}
+                </Text>
+                <Text style={[styles.tableCell, styles.col6]}>
+                  {appointment.examValue ? formatCurrency(appointment.examValue) : 'N/A'}
+                </Text>
+                <Text style={[styles.tableCell, styles.col7]}>
+                  {appointment.paymentDone ? 'Pago' : 'Pendente'}
                 </Text>
               </View>
             ))}
@@ -417,6 +339,93 @@ export const DoctorsPDFReport = ({
           />
         </View>
       </Page>
+
+      {/* Páginas adicionais */}
+      {pages > 1 && Array.from({ length: pages - 1 }, (_, pageIndex) => {
+        const startIndex = (pageIndex + 1) * itemsPerPage;
+        const endIndex = Math.min(startIndex + itemsPerPage, appointments.length);
+        const pageAppointments = appointments.slice(startIndex, endIndex);
+
+        return (
+          <Page key={pageIndex + 1} size="A4" style={styles.page} orientation="landscape">
+            <View style={styles.header}>
+              <Text style={styles.title}>Relatório de Atendimentos (continuação)</Text>
+            </View>
+
+            <View style={styles.section}>
+              <View style={styles.table}>
+                <View style={styles.tableHeader}>
+                  <Text style={[styles.tableCell, styles.tableCellBold, styles.col1]}>
+                    Data
+                  </Text>
+                  <Text style={[styles.tableCell, styles.tableCellBold, styles.col2]}>
+                    Paciente
+                  </Text>
+                  <Text style={[styles.tableCell, styles.tableCellBold, styles.col3]}>
+                    Médico
+                  </Text>
+                  <Text style={[styles.tableCell, styles.tableCellBold, styles.col4]}>
+                    Especialidade
+                  </Text>
+                  <Text style={[styles.tableCell, styles.tableCellBold, styles.col5]}>
+                    Convênio
+                  </Text>
+                  <Text style={[styles.tableCell, styles.tableCellBold, styles.col6]}>
+                    Valor
+                  </Text>
+                  <Text style={[styles.tableCell, styles.tableCellBold, styles.col7]}>
+                    Status
+                  </Text>
+                </View>
+
+                {pageAppointments.map((appointment, index) => (
+                  <View
+                    key={appointment.id}
+                    style={[
+                      styles.tableRow,
+                      ...(index % 2 === 0 ? [styles.tableRowEven] : []),
+                    ]}
+                  >
+                    <Text style={[styles.tableCell, styles.col1]}>
+                      {appointment.appointmentDate}
+                    </Text>
+                    <Text style={[styles.tableCell, styles.col2]}>
+                      {appointment.patient?.fullName || 'N/A'}
+                    </Text>
+                    <Text style={[styles.tableCell, styles.col3]}>
+                      {appointment.doctor?.name || 'N/A'}
+                    </Text>
+                    <Text style={[styles.tableCell, styles.col4]}>
+                      {appointment.specialty?.name || 'N/A'}
+                    </Text>
+                    <Text style={[styles.tableCell, styles.col5]}>
+                      {appointment.insuranceName || 'Particular'}
+                    </Text>
+                    <Text style={[styles.tableCell, styles.col6]}>
+                      {appointment.examValue ? formatCurrency(appointment.examValue) : 'N/A'}
+                    </Text>
+                    <Text style={[styles.tableCell, styles.col7]}>
+                      {appointment.paymentDone ? 'Pago' : 'Pendente'}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+
+            <View style={styles.footer} fixed>
+              <Text style={styles.footerText}>
+                Relatório gerado automaticamente pelo Sistema de Gestão
+              </Text>
+              <Text
+                style={styles.pageNumber}
+                render={({ pageNumber, totalPages }) =>
+                  `Página ${pageNumber} de ${totalPages}`
+                }
+              />
+            </View>
+          </Page>
+        );
+      })}
     </Document>
   );
 };

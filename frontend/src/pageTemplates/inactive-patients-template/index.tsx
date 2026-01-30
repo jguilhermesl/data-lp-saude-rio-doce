@@ -2,8 +2,11 @@
 
 import { useState } from "react";
 import { useInactivePatients } from "@/hooks/useInactivePatients";
+import { useDoctors } from "@/hooks/useDoctors";
+import { useProcedures } from "@/hooks/useProcedures";
 import { PrivateLayout } from "@/components/private-layout";
-import { UserX, Calendar, Clock, Search, ExternalLink } from "lucide-react";
+import { InactivePatientsFilters } from "./components/InactivePatientsFilters";
+import { UserX, Calendar, Clock, ExternalLink, Stethoscope, Activity } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -12,8 +15,18 @@ export function InactivePatientsTemplate() {
   const router = useRouter();
   const [monthsFilter, setMonthsFilter] = useState(3);
   const [searchTerm, setSearchTerm] = useState("");
+  const [doctorFilter, setDoctorFilter] = useState<string>("");
+  const [procedureFilter, setProcedureFilter] = useState<string>("");
+  const [doctorSearchTerm, setDoctorSearchTerm] = useState("");
+  const [procedureSearchTerm, setProcedureSearchTerm] = useState("");
 
-  const { data, isLoading, error } = useInactivePatients(monthsFilter);
+  const { data, isLoading, error } = useInactivePatients({
+    months: monthsFilter,
+    doctorId: doctorFilter || undefined,
+    procedureId: procedureFilter || undefined,
+  });
+  const { data: doctors = [] } = useDoctors(doctorSearchTerm);
+  const { data: procedures = [] } = useProcedures(procedureSearchTerm);
 
   // Filtrar pacientes por busca
   const filteredPatients = data?.inactivePatients.filter((patient) => {
@@ -34,45 +47,23 @@ export function InactivePatientsTemplate() {
       description="Lista de pacientes sem atendimento recente para campanhas de reativação"
     >
       <div className="space-y-6">
-
         {/* Filtros */}
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Filtro de Período */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Período de Inatividade
-              </label>
-              <select
-                value={monthsFilter}
-                onChange={(e) => setMonthsFilter(Number(e.target.value))}
-                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value={3}>3 meses ou mais</option>
-                <option value={6}>6 meses ou mais</option>
-                <option value={12}>12 meses ou mais</option>
-                <option value={18}>18 meses ou mais</option>
-              </select>
-            </div>
-
-            {/* Busca */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Buscar Paciente
-              </label>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                <input
-                  type="text"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder="Nome ou CPF..."
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
-            </div>
-          </div>
-        </div>
+        <InactivePatientsFilters
+          monthsFilter={monthsFilter}
+          setMonthsFilter={setMonthsFilter}
+          searchTerm={searchTerm}
+          setSearchTerm={setSearchTerm}
+          doctorFilter={doctorFilter}
+          setDoctorFilter={setDoctorFilter}
+          procedureFilter={procedureFilter}
+          setProcedureFilter={setProcedureFilter}
+          doctorSearchTerm={doctorSearchTerm}
+          setDoctorSearchTerm={setDoctorSearchTerm}
+          procedureSearchTerm={procedureSearchTerm}
+          setProcedureSearchTerm={setProcedureSearchTerm}
+          doctors={doctors}
+          procedures={procedures}
+        />
 
         {/* Resumo */}
         <div className="bg-gradient-to-r from-orange-50 to-red-50 p-6 rounded-lg border border-orange-200">
@@ -99,10 +90,13 @@ export function InactivePatientsTemplate() {
                     Paciente
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    CPF
+                    Telefone
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Telefone
+                    Médico
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Procedimentos
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Último Atendimento
@@ -118,7 +112,7 @@ export function InactivePatientsTemplate() {
               <tbody className="bg-white divide-y divide-gray-200">
                 {isLoading ? (
                   <tr>
-                    <td colSpan={6} className="px-6 py-12 text-center text-gray-500">
+                    <td colSpan={7} className="px-6 py-12 text-center text-gray-500">
                       <div className="flex items-center justify-center gap-2">
                         <Clock className="w-5 h-5 animate-spin" />
                         Carregando pacientes...
@@ -127,7 +121,7 @@ export function InactivePatientsTemplate() {
                   </tr>
                 ) : error ? (
                   <tr>
-                    <td colSpan={6} className="px-6 py-12 text-center text-red-500">
+                    <td colSpan={7} className="px-6 py-12 text-center text-red-500">
                       Erro ao carregar pacientes inativos. Tente novamente.
                     </td>
                   </tr>
@@ -137,19 +131,47 @@ export function InactivePatientsTemplate() {
                       key={patient.id}
                       className="hover:bg-gray-50 transition-colors"
                     >
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-6 py-4">
                         <div className="text-sm font-medium text-gray-900">
                           {patient.fullName}
                         </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-500">
-                          {patient.cpf || "Não informado"}
+                        <div className="text-xs text-gray-500 mt-1">
+                          {patient.cpf || "CPF não informado"}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm text-gray-500">
                           {patient.mobilePhone || patient.homePhone || "Não informado"}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-2 text-sm text-gray-900">
+                          <Stethoscope className="w-4 h-4 text-blue-500" />
+                          <span>{patient.lastDoctorName || "Não informado"}</span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex flex-wrap gap-1">
+                          {patient.lastProcedures && patient.lastProcedures.length > 0 ? (
+                            patient.lastProcedures.slice(0, 2).map((procedure) => (
+                              <span
+                                key={procedure.id}
+                                className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium bg-purple-100 text-purple-800"
+                              >
+                                <Activity className="w-3 h-3" />
+                                {procedure.name.length > 20
+                                  ? `${procedure.name.substring(0, 20)}...`
+                                  : procedure.name}
+                              </span>
+                            ))
+                          ) : (
+                            <span className="text-xs text-gray-500">Nenhum</span>
+                          )}
+                          {patient.lastProcedures && patient.lastProcedures.length > 2 && (
+                            <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-gray-100 text-gray-600">
+                              +{patient.lastProcedures.length - 2}
+                            </span>
+                          )}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
@@ -187,7 +209,7 @@ export function InactivePatientsTemplate() {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={6} className="px-6 py-12 text-center text-gray-500">
+                    <td colSpan={7} className="px-6 py-12 text-center text-gray-500">
                       Nenhum paciente inativo encontrado com os filtros aplicados.
                     </td>
                   </tr>

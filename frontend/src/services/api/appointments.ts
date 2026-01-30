@@ -51,7 +51,7 @@ export interface Specialty {
 export interface Appointment {
   id: string;
   externalId: string;
-  appointmentDate: Date;
+  appointmentDate: string;
   appointmentTime: string | null;
   appointmentAt: Date | null;
   insuranceName: string | null;
@@ -94,6 +94,25 @@ export interface GetAppointmentsMetricsParams {
   insuranceName?: string;
 }
 
+export interface AppointmentDetails extends Appointment {
+  responsibleUser: {
+    id: string;
+    name: string;
+    email: string;
+  } | null;
+  appointmentProcedures: {
+    id: string;
+    appointmentId: string;
+    procedureId: string;
+    procedure: {
+      id: string;
+      name: string;
+      code: string | null;
+      defaultPrice: number | null;
+    };
+  }[];
+}
+
 export const appointmentsApi = {
   getMetrics: async (
     params: GetAppointmentsMetricsParams
@@ -103,6 +122,13 @@ export const appointmentsApi = {
       {
         params,
       }
+    );
+    return response.data.data;
+  },
+
+  getById: async (appointmentId: string): Promise<AppointmentDetails> => {
+    const response = await api.get<{ data: AppointmentDetails }>(
+      `/appointments/${appointmentId}`
     );
     return response.data.data;
   },

@@ -334,7 +334,10 @@ export const ProcedureDetailsTemplate = ({
                         {appointment.doctor?.name || 'N/A'}
                       </td>
                       <td className="py-3 px-4 text-sm text-gray-900">
-                        {new Date(appointment.appointmentDate).toLocaleDateString('pt-BR')}
+                        {(() => {
+                          const [year, month, day] = appointment.appointmentDate.split('T')[0].split('-');
+                          return `${day}/${month}/${year}`;
+                        })()}
                         {appointment.appointmentTime && ` ${appointment.appointmentTime}`}
                       </td>
                       <td className="py-3 px-4 text-sm text-gray-900">

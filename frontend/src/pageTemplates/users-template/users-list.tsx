@@ -20,8 +20,9 @@ export const UsersList = ({
     'E-mail',
     'Telefone',
     'Função',
+    'Atendimentos',
+    'Vendas Totais',
     'Status',
-    'Criado em',
     'Ações',
   ];
 

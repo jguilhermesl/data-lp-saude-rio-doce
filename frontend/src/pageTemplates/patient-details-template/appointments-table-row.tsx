@@ -1,7 +1,5 @@
 'use client';
 import { Table } from '@/components/ui/table/table';
-import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
 import { useRouter } from 'next/navigation';
 
 interface Appointment {
@@ -57,7 +55,10 @@ export const AppointmentsTableRow = ({ appointment }: AppointmentsTableRowProps)
       <Table.Col>
         <div className="flex flex-col">
           <span className="font-medium">
-            {format(new Date(appointment.appointmentDate), 'dd/MM/yyyy', { locale: ptBR })}
+            {(() => {
+              const [year, month, day] = appointment.appointmentDate.split('T')[0].split('-');
+              return `${day}/${month}/${year}`;
+            })()}
           </span>
           {appointment.appointmentTime && (
             <span className="text-xs text-gray-500">

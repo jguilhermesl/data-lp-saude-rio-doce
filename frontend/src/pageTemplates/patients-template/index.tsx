@@ -9,6 +9,7 @@ import { PatientsList } from './patients-list';
 import { PatientsTableFilters } from './patients-table-filter';
 import { PatientsMetricCards } from './patients-metric-cards';
 import { PatientsVipList } from './patients-vip-list';
+import { PatientsExportButtons } from './patients-export-buttons';
 import { usePatientsMetrics } from '@/hooks/usePatientsMetrics';
 
 export const PatientsTemplate = () => {
@@ -66,19 +67,30 @@ export const PatientsTemplate = () => {
       description="Visualize e gerencie seus pacientes"
     >
       <div className="flex flex-col gap-4">
-        <PatientsTableFilters 
-          dateRange={dateRange}
-          setDateRange={setDateRange}
-          search={search}
-          onSearch={handleSearch}
-          onRemoveFilters={handleRemoveFilters}
-          minSpent={minSpent}
-          setMinSpent={setMinSpent}
-          maxSpent={maxSpent}
-          setMaxSpent={setMaxSpent}
-          lastAppointmentDateRange={lastAppointmentDateRange}
-          setLastAppointmentDateRange={setLastAppointmentDateRange}
-        />
+        {/* Filtros e Botões de Exportação */}
+        <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
+          <PatientsTableFilters 
+            dateRange={dateRange}
+            setDateRange={setDateRange}
+            search={search}
+            onSearch={handleSearch}
+            onRemoveFilters={handleRemoveFilters}
+            minSpent={minSpent}
+            setMinSpent={setMinSpent}
+            maxSpent={maxSpent}
+            setMaxSpent={setMaxSpent}
+            lastAppointmentDateRange={lastAppointmentDateRange}
+            setLastAppointmentDateRange={setLastAppointmentDateRange}
+          />
+          <PatientsExportButtons
+            summary={data?.summary}
+            patients={data?.patients || []}
+            vipPatients={data?.vipPatients || []}
+            dateRange={dateRange}
+            search={search}
+            isLoading={isLoading}
+          />
+        </div>
         <PatientsMetricCards 
           summary={data?.summary}
           isLoading={isLoading}

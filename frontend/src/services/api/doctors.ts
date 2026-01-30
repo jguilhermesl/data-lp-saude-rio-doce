@@ -4,17 +4,11 @@ export interface DoctorMetricsSummary {
   totalDoctors: number;
   avgRevenue: number;
   avgAppointments: number;
-  avgReturnRate: number;
   avgTicket: number;
   topByRevenue: {
     doctorId: string;
     name: string;
     totalRevenue: number;
-  } | null;
-  topByReturnRate: {
-    doctorId: string;
-    name: string;
-    returnRate: number;
   } | null;
   topByAppointments: {
     doctorId: string;
@@ -37,9 +31,6 @@ export interface DoctorMetrics {
   receivedRevenue: number;
   pendingRevenue: number;
   averageTicket: number;
-  returnRate: number;
-  returningPatientsCount: number;
-  newPatientsCount: number;
   productivity: {
     appointmentsPerDay: number;
     totalDays: number;

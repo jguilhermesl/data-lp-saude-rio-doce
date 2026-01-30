@@ -1,13 +1,14 @@
 import { AppointmentDetailsTemplate } from '@/pageTemplates/appointment-details-template';
 
 interface AppointmentDetailsPageProps {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 }
 
-export default function AppointmentDetailsPage({
+export default async function AppointmentDetailsPage({
   params,
 }: AppointmentDetailsPageProps) {
-  return <AppointmentDetailsTemplate appointmentId={params.id} />;
+  const { id } = await params;
+  return <AppointmentDetailsTemplate appointmentId={id} />;
 }

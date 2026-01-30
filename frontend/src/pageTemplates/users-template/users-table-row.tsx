@@ -17,17 +17,10 @@ export const UsersTableRow = ({ user, onDelete }: UsersTableRowProps) => {
   const router = useRouter();
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // TODO: Get user role from auth context
-  const isAdmin = true; // This should come from authentication context
-
   const handleViewDetails = () => {
     router.push(`/users/${user.id}`);
   };
-
-  const handleEdit = () => {
-    router.push(`/users/${user.id}`);
-  };
-
+  
   const handleDelete = () => {
     toast(
       `Tem certeza que deseja deletar o usuário ${user.name || user.email}?`,
@@ -107,6 +100,13 @@ export const UsersTableRow = ({ user, onDelete }: UsersTableRowProps) => {
     return phone;
   };
 
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL',
+    }).format(value);
+  };
+
   return (
     <Table.Row>
       <Table.Col className="font-medium">{user.name || 'Sem nome'}</Table.Col>
@@ -120,6 +120,16 @@ export const UsersTableRow = ({ user, onDelete }: UsersTableRowProps) => {
         </span>
       </Table.Col>
       <Table.Col>
+        <span className="text-sm font-medium text-gray-900">
+          {user.metrics?.totalAppointments || 0}
+        </span>
+      </Table.Col>
+      <Table.Col>
+        <span className="text-sm font-semibold text-green-600">
+          {formatCurrency(user.metrics?.totalSales || 0)}
+        </span>
+      </Table.Col>
+      <Table.Col>
         <span
           className={`px-3 py-1 rounded-full text-sm font-medium ${
             user.active
@@ -130,7 +140,6 @@ export const UsersTableRow = ({ user, onDelete }: UsersTableRowProps) => {
           {user.active ? 'Ativo' : 'Inativo'}
         </span>
       </Table.Col>
-      <Table.Col>{formatDate(user.createdAt)}</Table.Col>
       <Table.Col>
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="sm" onClick={handleViewDetails}>

@@ -55,14 +55,15 @@ const API_CONFIG = {
     'Cookie': 'dotproject=hllhp910t3ar325ms9m3tq7el6; PHPSESSID=kd2rmta1sup8elfvpcsr04nrq4',
   },
   sourceSystem: 's2web',
-  rowsPerPage: 100,
+  rowsPerPage: 300,
 };
 
 /**
- * Cache de médicos e pacientes
+ * Cache de médicos, pacientes e usuários
  */
 let doctorsCache: Map<string, string> | null = null;
 let patientsCache: Map<string, string> | null = null;
+let usersCache: Map<string, string> | null = null;
 
 /**
  * Carrega todos os médicos em cache
@@ -120,6 +121,72 @@ async function loadPatientsCache(): Promise<Map<string, string>> {
   console.log(`   ✓ ${patientsCache.size} pacientes carregados\n`);
   
   return patientsCache;
+}
+
+/**
+ * Carrega todos os usuários em cache
+ */
+async function loadUsersCache(): Promise<Map<string, string>> {
+  if (usersCache) {
+    return usersCache;
+  }
+
+  console.log('👤 Carregando usuários em cache...');
+  
+  const users = await prisma.user.findMany({
+    where: {
+      active: true,
+    },
+    select: {
+      id: true,
+      name: true,
+    },
+  });
+
+  usersCache = new Map(
+    users.map((u) => [normalizeString(u.name || ''), u.id])
+  );
+
+  console.log(`   ✓ ${usersCache.size} usuários carregados\n`);
+  
+  return usersCache;
+}
+
+/**
+ * Normaliza string para comparação flexível (remove acentos, espaços extras, converte para uppercase)
+ */
+function normalizeString(str: string): string {
+  return str
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '') // Remove acentos
+    .replace(/\s+/g, ' ') // Remove espaços extras
+    .trim()
+    .toUpperCase();
+}
+
+/**
+ * Busca usuário responsável por nome (busca flexível com normalização)
+ */
+function findResponsibleUser(responsibleName: string, usersCache: Map<string, string>): string | null {
+  if (!responsibleName || responsibleName.trim() === '') {
+    return null;
+  }
+
+  const normalizedSearch = normalizeString(responsibleName);
+  
+  // Tentativa 1: Match exato
+  if (usersCache.has(normalizedSearch)) {
+    return usersCache.get(normalizedSearch) || null;
+  }
+
+  // Tentativa 2: Match parcial (nome do usuário contém o texto buscado)
+  for (const [userName, userId] of usersCache.entries()) {
+    if (userName.includes(normalizedSearch) || normalizedSearch.includes(userName)) {
+      return userId;
+    }
+  }
+
+  return null;
 }
 
 /**
@@ -245,11 +312,14 @@ async function importAppointments() {
   let totalErrors = 0;
   let doctorsNotFound = new Set<string>();
   let patientsNotFound = new Set<string>();
+  let usersNotFound = new Set<string>();
+  let usersLinked = 0;
 
   try {
     // Carregar caches
     const doctorsCache = await loadDoctorsCache();
     const patientsCache = await loadPatientsCache();
+    const usersCache = await loadUsersCache();
 
     while (hasMore) {
       console.log(`📄 Buscando página ${page}...`);
@@ -267,9 +337,10 @@ async function importAppointments() {
       // Processar todos os atendimentos em paralelo
       const results = await Promise.allSettled(
         data.rows.map(async (appointment) => {
-          // Buscar médico e paciente
+          // Buscar médico, paciente e usuário responsável
           const doctorId = doctorsCache.get(appointment.medico.toUpperCase()) || null;
           const patientId = patientsCache.get(appointment.paciente.toUpperCase()) || null;
+          const responsibleUserId = findResponsibleUser(appointment.txt_usuario_responsavel, usersCache);
 
           if (!doctorId) {
             doctorsNotFound.add(appointment.medico);
@@ -279,21 +350,33 @@ async function importAppointments() {
             patientsNotFound.add(appointment.paciente);
           }
 
-          // Converter datas e valores
-          const appointmentDate = parseBRDate(appointment.dat_atendimento);
-          const createdDate = parseBRDate(appointment.dat_criacao);
-          const examValue = parseDecimal(appointment.vlr_exames);
-          const paidValue = parseDecimal(appointment.vlr_pago);
-          const paymentDone = appointment.hid_status === 'F'; // F = Fechado
+          if (!responsibleUserId && appointment.txt_usuario_responsavel) {
+            usersNotFound.add(appointment.txt_usuario_responsavel);
+          }
 
-          // Se a data do atendimento for inválida, pular este registro
+          // Converter datas e valores
+          let appointmentDate = parseBRDate(appointment.dat_atendimento);
+          const createdDate = parseBRDate(appointment.dat_criacao);
+          let usedFallbackDate = false;
+          
+          // Se a data do atendimento for inválida, tentar usar a data de criação
+          if (!appointmentDate) {
+            appointmentDate = createdDate;
+            usedFallbackDate = true;
+          }
+
+          // Se ambas as datas forem inválidas, pular este registro
           if (!appointmentDate) {
             return { 
               appointment, 
               skipped: true, 
-              reason: `Data inválida: ${appointment.dat_atendimento}` 
+              reason: `Ambas as datas inválidas - dat_atendimento: "${appointment.dat_atendimento}", dat_criacao: "${appointment.dat_criacao}"` 
             };
           }
+
+          const examValue = parseDecimal(appointment.vlr_exames);
+          const paidValue = parseDecimal(appointment.vlr_pago);
+          const paymentDone = appointment.hid_status === 'F'; // F = Fechado
 
           // Preparar dados para upsert
           const appointmentData = {
@@ -320,6 +403,7 @@ async function importAppointments() {
               ...appointmentData,
               ...(patientId && { patientId }),
               ...(doctorId && { doctorId }),
+              ...(responsibleUserId && { responsibleUserId }),
             },
             create: {
               externalId: appointment.hii_cod_atendimento,
@@ -327,22 +411,39 @@ async function importAppointments() {
               ...appointmentData,
               ...(patientId && { patientId }),
               ...(doctorId && { doctorId }),
+              ...(responsibleUserId && { responsibleUserId }),
             },
           });
 
-          return { appointment, result, skipped: false, missingRelations: !doctorId || !patientId };
+          return { 
+            appointment, 
+            result, 
+            skipped: false, 
+            missingRelations: !doctorId || !patientId,
+            hasResponsibleUser: !!responsibleUserId,
+            usedFallbackDate
+          };
         })
       );
 
       // Processar resultados
       let skipped = 0;
       let withMissingRelations = 0;
+      let pageCreated = 0;
+      let pageUpdated = 0;
+      let usedFallback = 0;
+      
       results.forEach((promiseResult) => {
         if (promiseResult.status === 'fulfilled') {
-          const { appointment, skipped: wasSkipped, result, missingRelations } = promiseResult.value;
+          const { appointment, skipped: wasSkipped, result, missingRelations, hasResponsibleUser, reason, usedFallbackDate } = promiseResult.value;
           
           if (wasSkipped) {
             skipped++;
+            // Log de erro detalhado para atendimentos pulados
+            console.error(`   ❌ ERRO - Atendimento pulado:`);
+            console.error(`      ID: ${appointment.hii_cod_atendimento}`);
+            console.error(`      Paciente: ${appointment.paciente}`);
+            console.error(`      Motivo: ${reason}\n`);
             return;
           }
 
@@ -350,28 +451,59 @@ async function importAppointments() {
             const isNew = result.createdAt.getTime() === result.updatedAt.getTime();
             if (isNew) {
               totalImported++;
+              pageCreated++;
             } else {
               totalUpdated++;
+              pageUpdated++;
+            }
+
+            if (hasResponsibleUser) {
+              usersLinked++;
+            }
+
+            if (usedFallbackDate) {
+              usedFallback++;
+              // Log de warning para data de fallback usada
+              console.warn(`   ⚠️  ATENÇÃO - Usado dat_criacao como fallback:`);
+              console.warn(`      ID: ${appointment.hii_cod_atendimento}`);
+              console.warn(`      Paciente: ${appointment.paciente}`);
+              console.warn(`      dat_atendimento inválida: "${appointment.dat_atendimento}"`);
+              console.warn(`      dat_criacao usada: "${appointment.dat_criacao}"\n`);
             }
 
             if (missingRelations) {
               withMissingRelations++;
-              console.log(`   ✓ Atendimento ${appointment.hii_cod_atendimento} - ${appointment.paciente} (${appointment.dat_atendimento}) ⚠️ sem relacionamento completo`);
-            } else {
-              console.log(`   ✓ Atendimento ${appointment.hii_cod_atendimento} - ${appointment.paciente} (${appointment.dat_atendimento})`);
+              // Log de warning para relacionamentos faltantes
+              console.warn(`   ⚠️  ATENÇÃO - Atendimento sem relacionamento completo:`);
+              console.warn(`      ID: ${appointment.hii_cod_atendimento}`);
+              console.warn(`      Paciente: ${appointment.paciente} ${!patientsCache.has(appointment.paciente.toUpperCase()) ? '(NÃO ENCONTRADO)' : '(OK)'}`);
+              console.warn(`      Médico: ${appointment.medico} ${!doctorsCache.has(appointment.medico.toUpperCase()) ? '(NÃO ENCONTRADO)' : '(OK)'}`);
+              console.warn(`      Data: ${appointment.dat_atendimento}\n`);
             }
           }
         } else {
           totalErrors++;
-          console.error(`   ✗ Erro:`, promiseResult.reason);
+          // Log de erro detalhado
+          console.error(`   ❌ ERRO - Falha ao processar atendimento:`);
+          console.error(`      Mensagem: ${promiseResult.reason?.message || promiseResult.reason}`);
+          if (promiseResult.reason?.stack) {
+            console.error(`      Stack: ${promiseResult.reason.stack}\n`);
+          } else {
+            console.error('');
+          }
         }
       });
 
+      // Resumo da página
+      console.log(`   ✅ Processados: ${pageCreated} criados, ${pageUpdated} atualizados`);
+      if (usedFallback > 0) {
+        console.log(`   ⚠️  ${usedFallback} usaram dat_criacao como fallback (veja detalhes acima)`);
+      }
       if (skipped > 0) {
-        console.log(`   ⚠️  ${skipped} atendimento(s) pulado(s) (data inválida)`);
+        console.log(`   ⚠️  ${skipped} atendimento(s) pulado(s) (veja detalhes acima)`);
       }
       if (withMissingRelations > 0) {
-        console.log(`   ℹ️  ${withMissingRelations} atendimento(s) cadastrado(s) sem médico/paciente`);
+        console.log(`   ⚠️  ${withMissingRelations} sem relacionamento completo (veja detalhes acima)`);
       }
 
       console.log('');
@@ -389,28 +521,44 @@ async function importAppointments() {
     console.log(`   • Atendimentos criados: ${totalImported}`);
     console.log(`   • Atendimentos atualizados: ${totalUpdated}`);
     console.log(`   • Total processado: ${totalImported + totalUpdated}`);
+    console.log(`   • Usuários responsáveis vinculados: ${usersLinked}`);
     if (totalErrors > 0) {
       console.log(`   • Erros: ${totalErrors}`);
     }
 
+    // Seção de erros e problemas encontrados
+    if (doctorsNotFound.size > 0 || patientsNotFound.size > 0 || usersNotFound.size > 0) {
+      console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      console.log('⚠️  PROBLEMAS ENCONTRADOS - ATENÇÃO');
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    }
+
     if (doctorsNotFound.size > 0) {
-      console.log(`\n⚠️  Médicos não encontrados (${doctorsNotFound.size}):`);
-      Array.from(doctorsNotFound).slice(0, 10).forEach((name) => {
+      console.log(`\n❌ Médicos não encontrados (${doctorsNotFound.size}):`);
+      console.log('   Estes médicos precisam ser importados primeiro:');
+      Array.from(doctorsNotFound).forEach((name) => {
         console.log(`   • ${name}`);
       });
-      if (doctorsNotFound.size > 10) {
-        console.log(`   ... e mais ${doctorsNotFound.size - 10}`);
-      }
     }
 
     if (patientsNotFound.size > 0) {
-      console.log(`\n⚠️  Pacientes não encontrados (${patientsNotFound.size}):`);
-      Array.from(patientsNotFound).slice(0, 10).forEach((name) => {
+      console.log(`\n❌ Pacientes não encontrados (${patientsNotFound.size}):`);
+      console.log('   Estes pacientes precisam ser importados primeiro:');
+      Array.from(patientsNotFound).forEach((name) => {
         console.log(`   • ${name}`);
       });
-      if (patientsNotFound.size > 10) {
-        console.log(`   ... e mais ${patientsNotFound.size - 10}`);
-      }
+    }
+
+    if (usersNotFound.size > 0) {
+      console.log(`\n❌ Usuários responsáveis não encontrados (${usersNotFound.size}):`);
+      console.log('   Estes usuários não foram encontrados no sistema:');
+      Array.from(usersNotFound).forEach((name) => {
+        console.log(`   • ${name}`);
+      });
+    }
+
+    if (doctorsNotFound.size > 0 || patientsNotFound.size > 0 || usersNotFound.size > 0) {
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     }
 
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');

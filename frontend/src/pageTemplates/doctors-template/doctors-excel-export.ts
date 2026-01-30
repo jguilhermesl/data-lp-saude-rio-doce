@@ -9,7 +9,6 @@ export const exportDoctorsToExcel = (doctors: DoctorMetrics[]) => {
     'CRM': doctor.crm,
     'Especialidade(s)': doctor.specialties.map((s) => s.name).join(', ') || 'N/A',
     'Total de Atendimentos': doctor.appointmentCount,
-    'Taxa de Retorno (%)': Number(doctor.returnRate.toFixed(2)),
     'Faturamento Total': Number(doctor.totalRevenue.toFixed(2)),
     'Ticket Médio': Number(doctor.averageTicket.toFixed(2)),
   }));
@@ -23,7 +22,6 @@ export const exportDoctorsToExcel = (doctors: DoctorMetrics[]) => {
     { wch: 12 }, // CRM
     { wch: 30 }, // Especialidade(s)
     { wch: 20 }, // Total de Atendimentos
-    { wch: 18 }, // Taxa de Retorno (%)
     { wch: 18 }, // Faturamento Total
     { wch: 15 }, // Ticket Médio
   ];

@@ -1,12 +1,9 @@
 'use client';
-
-import { Button } from '@/components/ui/button';
 import { Table } from '@/components/ui/table';
+import { Button } from '@/components/ui/button';
 import { Eye } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Appointment } from '@/services/api/appointments';
-import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
 
 interface AppointmentsTableRowProps {
   appointment: Appointment;
@@ -29,8 +26,10 @@ export const AppointmentsTableRow = ({
     }).format(value);
   };
 
-  const formatDate = (date: Date) => {
-    return format(new Date(date), 'dd/MM/yyyy', { locale: ptBR });
+  const formatDate = (date: string) => {
+    // Extract date directly from ISO string without timezone conversion
+    const [year, month, day] = date.split('T')[0].split('-');
+    return `${day}/${month}/${year}`;
   };
 
   return (
@@ -75,12 +74,12 @@ export const AppointmentsTableRow = ({
       </Table.Col>
 
       {/* Ações */}
-      {/* <Table.Col>
+      <Table.Col>
         <Button variant="ghost" size="sm" onClick={handleViewDetails}>
           <Eye className="mr-2 h-3 w-3" />
           Ver detalhes
         </Button>
-      </Table.Col> */}
+      </Table.Col>
     </Table.Row>
   );
 };

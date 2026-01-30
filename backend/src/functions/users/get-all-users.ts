@@ -1,5 +1,6 @@
 import { handleErrors } from '@/utils/handle-errors';
 import { UserDAO } from '@/DAO/user';
+import { prisma } from '@/lib/prisma';
 
 export const getAllUsers = async (req: any, res: any) => {
   try {
@@ -12,8 +13,42 @@ export const getAllUsers = async (req: any, res: any) => {
       { createdAt: 'desc' }
     );
 
-    // Remove o passwordHash da resposta
-    const usersWithoutPassword = users.map(({ passwordHash, ...user }) => user);
+    // Buscar métricas de atendimentos para cada usuário
+    const usersWithMetrics = await Promise.all(
+      users.map(async (user) => {
+        const { passwordHash, ...userWithoutPassword } = user;
+
+        // Buscar atendimentos do usuário
+        const appointments = await prisma.appointment.findMany({
+          where: {
+            responsibleUserId: user.id,
+          },
+          select: {
+            id: true,
+            paidValue: true,
+            examValue: true,
+            paymentDone: true,
+          },
+        });
+
+        // Calcular métricas
+        const totalAppointments = appointments.length;
+        const totalSales = appointments.reduce((sum, apt) => {
+          const value = apt.paidValue || apt.examValue || 0;
+          return sum + Number(value);
+        }, 0);
+        const completedAppointments = appointments.filter(apt => apt.paymentDone).length;
+
+        return {
+          ...userWithoutPassword,
+          metrics: {
+            totalAppointments,
+            totalSales,
+            completedAppointments,
+          },
+        };
+      })
+    );
 
     // Calcular métricas básicas
     const summary = {
@@ -27,7 +62,7 @@ export const getAllUsers = async (req: any, res: any) => {
     return res.status(200).send({
       data: {
         summary,
-        users: usersWithoutPassword
+        users: usersWithMetrics
       }
     });
   } catch (err) {

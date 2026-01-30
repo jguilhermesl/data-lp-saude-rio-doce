@@ -34,14 +34,10 @@ export const getDashboardMetrics = async (req: any, res: any) => {
       financial,
       paymentStatus,
       patientSegmentation,
-      returnRate,
-      totalPatients,
     ] = await Promise.all([
       appointmentDAO.getFinancialMetrics(startDate, endDate, {}),
       appointmentDAO.getPaymentStatus(startDate, endDate),
       patientDAO.getPatientSegmentation(startDate, endDate),
-      patientDAO.getReturnRate(startDate, endDate),
-      patientDAO.count(),
     ]);
 
     // Processar métricas financeiras
@@ -54,7 +50,8 @@ export const getDashboardMetrics = async (req: any, res: any) => {
     const paidCount = paymentStatus.find((p) => p.paymentDone)?._count.id || 0;
     const paymentRate = totalAppointments > 0 ? (paidCount / totalAppointments) * 100 : 0;
 
-    // Processar pacientes
+    // Processar pacientes - apenas pacientes atendidos no período
+    const totalPatients = patientSegmentation.length; // Total de pacientes que tiveram atendimentos no período
     const newPatientsCount = patientSegmentation.filter((p) => p.isNew).length;
     const recurringPatientsCount = patientSegmentation.filter((p) => p.isRecurring).length;
 
@@ -186,7 +183,6 @@ export const getDashboardMetrics = async (req: any, res: any) => {
         total: totalPatients,
         newPatients: newPatientsCount,
         recurringPatients: recurringPatientsCount,
-        returnRate: returnRate.returnRate,
       },
       expenses: {
         summary: {

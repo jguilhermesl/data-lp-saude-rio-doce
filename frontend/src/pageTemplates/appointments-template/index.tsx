@@ -8,7 +8,7 @@ import { PrivateLayout } from '@/components/private-layout';
 import { AppointmentsList } from './appointments-list';
 import { AppointmentsTableFilters } from './appointments-table-filter';
 import { AppointmentsMetricCards } from './appointments-metric-cards';
-import { AppointmentsDoctorChart } from './appointments-doctor-chart';
+import { AppointmentsExportButtons } from './appointments-export-buttons';
 import { useAppointmentsMetrics } from '@/hooks/useAppointmentsMetrics';
 
 export const AppointmentsTemplate = () => {
@@ -54,19 +54,25 @@ export const AppointmentsTemplate = () => {
       description="Gerencie e visualize todos os atendimentos"
     >
       <div className="flex flex-col gap-4">
-        <AppointmentsTableFilters 
-          dateRange={dateRange}
-          setDateRange={setDateRange}
-          search={search}
-          onSearch={handleSearch}
-          onRemoveFilters={handleRemoveFilters}
-        />
+        {/* Filtros e Botões de Exportação */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <AppointmentsTableFilters 
+            dateRange={dateRange}
+            setDateRange={setDateRange}
+            search={search}
+            onSearch={handleSearch}
+            onRemoveFilters={handleRemoveFilters}
+          />
+          <AppointmentsExportButtons
+            summary={data?.summary}
+            appointments={data?.appointments || []}
+            dateRange={dateRange}
+            search={search}
+            isLoading={isLoading}
+          />
+        </div>
         <AppointmentsMetricCards 
           summary={data?.summary}
-          isLoading={isLoading}
-        />
-        <AppointmentsDoctorChart 
-          data={data?.byDoctor || []}
           isLoading={isLoading}
         />
         <AppointmentsList 

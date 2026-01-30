@@ -1,7 +1,7 @@
 "use client";
 
 import { MetricCard } from "@/components/metric-card";
-import { Users, UserPlus, UserCheck, Percent } from "lucide-react";
+import { Users, UserPlus, UserCheck } from "lucide-react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts";
 import { useRouter } from "next/navigation";
 
@@ -11,7 +11,6 @@ interface PatientsTabProps {
       total: number;
       newPatients: number;
       recurringPatients: number;
-      returnRate: number;
     };
   };
 }
@@ -30,12 +29,12 @@ export function PatientsTab({ data }: PatientsTabProps) {
   return (
     <div className="space-y-6">
       {/* Cards de Métricas */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         <MetricCard
           title="Total de Pacientes"
           value={data.patients.total}
           icon={Users}
-          subtitle="Atendidos no período"
+          subtitle="Pacientes atendidos no período selecionado"
         />
         <MetricCard
           title="Pacientes Novos"
@@ -48,12 +47,6 @@ export function PatientsTab({ data }: PatientsTabProps) {
           value={data.patients.recurringPatients}
           icon={UserCheck}
           subtitle={`Pacientes que voltaram para nova consulta (${((data.patients.recurringPatients / data.patients.total) * 100).toFixed(1)}%)`}
-        />
-        <MetricCard
-          title="Taxa de Retorno"
-          value={`${data.patients.returnRate.toFixed(1)}%`}
-          icon={Percent}
-          subtitle="Percentual de pacientes que retornam após primeira consulta"
         />
       </div>
 
@@ -97,7 +90,7 @@ export function PatientsTab({ data }: PatientsTabProps) {
                 Campanha de Reativação
               </h4>
               <p className="text-sm text-blue-700 mb-3">
-                Estimamos <strong>{inactivePatients} pacientes inativos</strong> há mais de 3 meses.
+                Você tem <strong>pacientes inativos</strong> com recorrência.
                 Esta é uma grande oportunidade para recuperar receita.
               </p>
               <button 
@@ -106,18 +99,6 @@ export function PatientsTab({ data }: PatientsTabProps) {
               >
                 Ver Lista de Reativação
               </button>
-            </div>
-
-            <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
-              <h4 className="font-semibold text-green-900 mb-2">
-                Taxa de Retorno
-              </h4>
-              <p className="text-sm text-green-700">
-                Sua taxa de retorno atual é de <strong>{data.patients.returnRate.toFixed(1)}%</strong>.
-                {data.patients.returnRate >= 60 
-                  ? " Excelente! Continue com o bom trabalho." 
-                  : " Foque em melhorar a experiência do paciente para aumentar este número."}
-              </p>
             </div>
 
             <div className="p-4 bg-purple-50 border border-purple-200 rounded-lg">

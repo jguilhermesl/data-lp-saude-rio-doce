@@ -3,7 +3,6 @@ import { api } from '@/lib/axios';
 export interface PatientMetricsSummary {
   totalPatients: number;
   recurringPatients: number;
-  returnRate: number;
   vipPatientsCount: number;
   patientsAtRiskCount: number;
   churnRate: number;
