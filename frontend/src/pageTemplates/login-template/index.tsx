@@ -1,7 +1,7 @@
 'use client';
 import { Button } from '@/components/ui/button';
 import { useFormik } from 'formik';
-import { Envelope, CircleNotch } from 'phosphor-react';
+import { CircleNotch } from 'phosphor-react';
 import { validationSchemaLogin } from '@/lib/utils/validations/login';
 import { Heading } from '@/components/ui/heading';
 import { FormInputField } from '@/components/form-input-field';
@@ -59,7 +59,6 @@ export const LoginTemplate = () => {
           <FormInputField
             label="E-mail"
             placeholder="Digite seu e-mail"
-            iconRight={<Envelope size={16} />}
             onChange={handleChange('email')}
             onBlur={handleBlur('email')}
             value={values.email}

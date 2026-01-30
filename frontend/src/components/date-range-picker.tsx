@@ -1,6 +1,4 @@
 "use client";
-
-import { useState } from "react";
 import { format, startOfMonth, endOfMonth, subMonths, startOfYear, endOfYear, subDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Calendar } from "lucide-react";
@@ -12,7 +10,6 @@ interface DateRangePickerProps {
 }
 
 export function DateRangePicker({ startDate, endDate, onDateChange }: DateRangePickerProps) {
-  const [setShowCustom] = useState(false);
 
   const handlePreset = (preset: string) => {
     const today = new Date();
@@ -52,7 +49,6 @@ export function DateRangePicker({ startDate, endDate, onDateChange }: DateRangeP
     }
 
     onDateChange(start, end);
-    setShowCustom(false);
   };
 
   return (

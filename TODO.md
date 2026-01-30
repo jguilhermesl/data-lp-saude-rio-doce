@@ -7,6 +7,6 @@
 - [x]  Detalhes do médico não tem necessidade de clicar na linha e ja abrir detalhes de atendimento
 - [x]  Total de pacientes no periodo (dashboard)
 - [x]  Revisar numeros de pacientes na dashboard (pacientes)
-
-- [ ]  Preciso ver quem foi o funcionário que mais vendeu ( Tela de funcionários x Uusários)
+- [x]  Preciso ver quem foi o funcionário que mais vendeu ( Tela de funcionários x Uusários)
+- [ ]  
 - [ ]  Como se o procedimento LP Benificios não estivesse aqui ( Revisar porque não estão sendo puxados)

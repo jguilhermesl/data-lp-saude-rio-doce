@@ -52,6 +52,7 @@ interface DashboardMetrics {
       revenue: number;
       expenses: number;
       profit: number;
+      appointments: number;
     }>;
   };
   period: {
