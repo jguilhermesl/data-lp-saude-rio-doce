@@ -17,6 +17,7 @@ import { routerExpenses } from "./functions/expenses/routes";
 import { routerFinancial } from "./functions/financial/routes";
 import { routerDoctors } from "./functions/doctors/routes";
 import { routerProcedures } from "./functions/procedures/routes";
+import { routerSync } from "./functions/sync/routes";
 
 const PORT = env.PORT;
 const app = express();
@@ -37,5 +38,6 @@ app.use(routerSpecialties);
 app.use(routerDashboard);
 app.use(routerExpenses);
 app.use(routerFinancial);
+app.use(routerSync);
 
 app.listen(PORT, () => console.log(`Servidor rodando na porta ${PORT}!!!`));
