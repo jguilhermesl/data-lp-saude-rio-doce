@@ -6,6 +6,7 @@ import {
   ClipboardList,
   Calendar,
   DollarSign,
+  Headset,
 } from "lucide-react";
 
 // Configuração dos itens da sidebar
@@ -58,5 +59,11 @@ export const SIDEBAR_ITEMS: SidebarItem[] = [
     href: "/financial",
     icon: DollarSign,
     adminOnly: true,
+  },
+  {
+    label: "Pós-Venda",
+    href: "/after-sales",
+    icon: Headset,
+    adminOnly: false,
   },
 ];
