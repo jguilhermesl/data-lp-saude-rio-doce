@@ -1,3 +1,4 @@
+import { Appointment } from '@/@types/Appointment';
 import { api } from '@/lib/axios';
 
 export interface PatientMetricsSummary {
@@ -70,32 +71,6 @@ export interface GetPatientsMetricsParams {
   maxSpent?: number;
   lastAppointmentStartDate?: string;
   lastAppointmentEndDate?: string;
-}
-
-export interface Appointment {
-  id: string;
-  appointmentDate: string;
-  appointmentTime?: string;
-  examValue?: number;
-  paidValue?: number;
-  paymentDone: boolean;
-  insuranceName?: string;
-  doctor: {
-    id: string;
-    name: string;
-    crm?: string;
-  } | null;
-  specialty: {
-    id: string;
-    name: string;
-  } | null;
-  appointmentProcedures: Array<{
-    procedure: {
-      id: string;
-      name: string;
-      code?: string;
-    };
-  }>;
 }
 
 export interface PatientMetrics {

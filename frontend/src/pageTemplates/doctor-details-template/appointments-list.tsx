@@ -23,6 +23,7 @@ interface Appointment {
     cpf?: string;
   } | null;
   procedures: Procedure[];
+  examsRaw?: string;
 }
 
 interface AppointmentsListProps {

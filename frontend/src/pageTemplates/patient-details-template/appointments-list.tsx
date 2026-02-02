@@ -1,32 +1,7 @@
 import { Table } from '@/components/ui/table/table';
 import { Calendar } from 'lucide-react';
 import { AppointmentsTableRow } from './appointments-table-row';
-
-interface Appointment {
-  id: string;
-  appointmentDate: string;
-  appointmentTime?: string;
-  examValue?: number;
-  paidValue?: number;
-  paymentDone: boolean;
-  insuranceName?: string;
-  doctor: {
-    id: string;
-    name: string;
-    crm?: string;
-  } | null;
-  specialty: {
-    id: string;
-    name: string;
-  } | null;
-  appointmentProcedures: Array<{
-    procedure: {
-      id: string;
-      name: string;
-      code?: string;
-    };
-  }>;
-}
+import { Appointment } from '@/@types/Appointment';
 
 interface AppointmentsListProps {
   appointments: Appointment[];

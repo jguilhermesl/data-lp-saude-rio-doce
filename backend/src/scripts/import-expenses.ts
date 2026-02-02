@@ -15,7 +15,7 @@ interface ExpenseRowData {
 /**
  * Caminho para o arquivo Excel
  */
-const EXCEL_FILE_PATH = path.join(__dirname, 'LP SAUDE - ATUALIZADO.xlsx');
+const EXCEL_FILE_PATH = path.join(__dirname, 'expenses.xlsx');
 const SHEET_NAME = 'BASE DE DADOS';
 
 /**

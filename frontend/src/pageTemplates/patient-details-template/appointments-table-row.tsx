@@ -1,6 +1,5 @@
 'use client';
 import { Table } from '@/components/ui/table/table';
-import { useRouter } from 'next/navigation';
 
 interface Appointment {
   id: string;
@@ -26,19 +25,16 @@ interface Appointment {
       code?: string;
     };
   }>;
+   examsRaw: string;
 }
 
 interface AppointmentsTableRowProps {
   appointment: Appointment;
 }
 
-export const AppointmentsTableRow = ({ appointment }: AppointmentsTableRowProps) => {
-  const router = useRouter();
-
-  const handleClick = () => {
-    router.push(`/appointments/${appointment.id}`);
-  };
-
+export const AppointmentsTableRow = ({
+  appointment,
+}: AppointmentsTableRowProps) => {
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
@@ -47,16 +43,18 @@ export const AppointmentsTableRow = ({ appointment }: AppointmentsTableRowProps)
   };
 
   const procedures = appointment.appointmentProcedures
-    .map(ap => ap.procedure.name)
+    .map((ap) => ap.procedure.name)
     .join(', ');
 
   return (
-    <Table.Row onClick={handleClick}>
+    <Table.Row>
       <Table.Col>
         <div className="flex flex-col">
           <span className="font-medium">
             {(() => {
-              const [year, month, day] = appointment.appointmentDate.split('T')[0].split('-');
+              const [year, month, day] = appointment.appointmentDate
+                .split('T')[0]
+                .split('-');
               return `${day}/${month}/${year}`;
             })()}
           </span>
@@ -80,8 +78,10 @@ export const AppointmentsTableRow = ({ appointment }: AppointmentsTableRowProps)
         </div>
       </Table.Col>
       <Table.Col>
-        <div className="max-w-[200px] truncate" title={procedures}>
-          {procedures || <span className="text-gray-500">Não informado</span>}
+        <div className="max-w-50 truncate" title={procedures}>
+          {appointment.examsRaw || (
+            <span className="text-gray-500">Não informado</span>
+          )}
         </div>
       </Table.Col>
       <Table.Col className="font-medium text-green-600">

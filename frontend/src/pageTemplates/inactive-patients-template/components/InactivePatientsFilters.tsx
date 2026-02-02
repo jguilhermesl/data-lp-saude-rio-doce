@@ -1,6 +1,6 @@
 import { Dispatch, SetStateAction } from "react";
 import { AutoCompleteInput } from "@/components/ui/auto-complete";
-import { Search, Stethoscope, Activity } from "lucide-react";
+import { Search, Stethoscope, Activity, RotateCcw } from "lucide-react";
 
 interface Doctor {
   id: string;
@@ -29,6 +29,7 @@ interface InactivePatientsFiltersProps {
   setProcedureSearchTerm: Dispatch<SetStateAction<string>>;
   doctors: Doctor[];
   procedures: Procedure[];
+  onResetFilters: () => void;
 }
 
 export function InactivePatientsFilters({
@@ -46,6 +47,7 @@ export function InactivePatientsFilters({
   setProcedureSearchTerm,
   doctors,
   procedures,
+  onResetFilters,
 }: InactivePatientsFiltersProps) {
   // Filtrar médicos baseado no termo de busca
   const filteredDoctors = doctorSearchTerm
@@ -64,6 +66,16 @@ export function InactivePatientsFilters({
 
   return (
     <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-lg font-semibold text-gray-900">Filtros</h3>
+        <button
+          onClick={onResetFilters}
+          className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+        >
+          <RotateCcw className="w-4 h-4" />
+          Resetar Filtros
+        </button>
+      </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Filtro de Período */}
         <div className="flex flex-col">

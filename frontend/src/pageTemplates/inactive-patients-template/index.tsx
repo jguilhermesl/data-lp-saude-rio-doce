@@ -41,6 +41,15 @@ export function InactivePatientsTemplate() {
     router.push(`/patient/${patientId}`);
   };
 
+  const handleResetFilters = () => {
+    setMonthsFilter(3);
+    setSearchTerm("");
+    setDoctorFilter("");
+    setProcedureFilter("");
+    setDoctorSearchTerm("");
+    setProcedureSearchTerm("");
+  };
+
   return (
     <PrivateLayout
       title="Pacientes Inativos"
@@ -63,6 +72,7 @@ export function InactivePatientsTemplate() {
           setProcedureSearchTerm={setProcedureSearchTerm}
           doctors={doctors}
           procedures={procedures}
+          onResetFilters={handleResetFilters}
         />
 
         {/* Resumo */}
