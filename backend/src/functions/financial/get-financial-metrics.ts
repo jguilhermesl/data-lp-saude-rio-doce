@@ -40,7 +40,7 @@ export const getFinancialMetrics = async (req: any, res: any) => {
       // Buscar appointments para calcular faturamento
       prisma.appointment.aggregate({
         where: {
-          appointmentDate: { gte: startDate, lte: endDate },
+          createdDate: { gte: startDate, lte: endDate },
         },
         _sum: {
           paidValue: true,
@@ -125,7 +125,7 @@ export const getFinancialMetrics = async (req: any, res: any) => {
           const [appointmentData, expenseData] = await Promise.all([
             prisma.appointment.aggregate({
               where: {
-                appointmentDate: { gte: monthStart, lte: monthEnd },
+                createdDate: { gte: monthStart, lte: monthEnd },
               },
               _sum: {
                 paidValue: true,

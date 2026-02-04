@@ -10,6 +10,7 @@ import { AppointmentsTableFilters } from './appointments-table-filter';
 import { AppointmentsMetricCards } from './appointments-metric-cards';
 import { AppointmentsExportButtons } from './appointments-export-buttons';
 import { useAppointmentsMetrics } from '@/hooks/useAppointmentsMetrics';
+import { toLocalISOString } from '@/lib/utils/date';
 
 export const AppointmentsTemplate = () => {
   // Estados dos filtros - Date range padrão é o mês atual
@@ -21,9 +22,20 @@ export const AppointmentsTemplate = () => {
   const [page, setPage] = useState(1);
   const limit = 100;
 
-  // Formatar datas para a API
-  const startDate = dateRange?.from?.toISOString() || new Date().toISOString();
-  const endDate = dateRange?.to?.toISOString() || new Date().toISOString();
+  // Formatar datas para a API (sem conversão de timezone)
+  const startDate = dateRange?.from ? toLocalISOString(dateRange.from) : toLocalISOString(new Date());
+  
+  // Data final deve ir com 23:59:59
+  const endDate = dateRange?.to 
+    ? toLocalISOString(new Date(
+        dateRange.to.getFullYear(),
+        dateRange.to.getMonth(),
+        dateRange.to.getDate(),
+        23,
+        59,
+        59
+      ))
+    : toLocalISOString(new Date());
 
   // Buscar métricas
   const { data, isLoading, error } = useAppointmentsMetrics({

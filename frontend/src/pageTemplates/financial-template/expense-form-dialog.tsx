@@ -10,11 +10,12 @@ import {
   CreateExpenseData,
 } from '@/services/api/expenses';
 import { toast } from 'sonner';
+import { toLocalDateString } from '@/lib/utils/date';
 
 // Helpers
 const getTodayDate = () => {
   const today = new Date();
-  return today.toISOString().split('T')[0];
+  return toLocalDateString(today);
 };
 
 interface ExpenseFormDialogProps {

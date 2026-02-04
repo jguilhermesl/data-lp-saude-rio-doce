@@ -11,6 +11,7 @@ import { ProceduresList } from './procedures-list';
 import { ProceduresMetricCards } from './procedures-metric-cards';
 import { ProceduresExportButtons } from './procedures-export-buttons';
 import { proceduresApi } from '@/services/api/procedures';
+import { toLocalISOString } from '@/lib/utils/date';
 
 export const ProceduresTemplate = () => {
   const listRef = useRef<HTMLDivElement>(null);
@@ -31,14 +32,24 @@ export const ProceduresTemplate = () => {
     return () => clearTimeout(timer);
   }, [search]);
 
-  // Converte as datas para o formato ISO para a API
+  // Converte as datas para o formato ISO para a API (sem conversão de timezone)
   const { startDate, endDate } = useMemo(() => {
     const from = dateRange?.from || startOfMonth(new Date());
     const to = dateRange?.to || endOfMonth(new Date());
     
+    // Data final deve ir com 23:59:59
+    const toWithTime = new Date(
+      to.getFullYear(),
+      to.getMonth(),
+      to.getDate(),
+      23,
+      59,
+      59
+    );
+    
     return {
-      startDate: from.toISOString(),
-      endDate: to.toISOString(),
+      startDate: toLocalISOString(from),
+      endDate: toLocalISOString(toWithTime),
     };
   }, [dateRange]);
 

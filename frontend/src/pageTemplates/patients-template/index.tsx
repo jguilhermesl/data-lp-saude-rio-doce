@@ -11,6 +11,7 @@ import { PatientsMetricCards } from './patients-metric-cards';
 import { PatientsVipList } from './patients-vip-list';
 import { PatientsExportButtons } from './patients-export-buttons';
 import { usePatientsMetrics } from '@/hooks/usePatientsMetrics';
+import { toLocalISOString } from '@/lib/utils/date';
 
 export const PatientsTemplate = () => {
   // Estados dos filtros - Date range padrão é o mês atual
@@ -25,11 +26,32 @@ export const PatientsTemplate = () => {
   const [page, setPage] = useState(1);
   const limit = 100;
 
-  // Formatar datas para a API
-  const startDate = dateRange?.from?.toISOString() || new Date().toISOString();
-  const endDate = dateRange?.to?.toISOString() || new Date().toISOString();
-  const lastAppointmentStartDate = lastAppointmentDateRange?.from?.toISOString();
-  const lastAppointmentEndDate = lastAppointmentDateRange?.to?.toISOString();
+  // Formatar datas para a API (sem conversão de timezone)
+  const startDate = dateRange?.from ? toLocalISOString(dateRange.from) : toLocalISOString(new Date());
+  
+  // Data final deve ir com 23:59:59
+  const endDate = dateRange?.to 
+    ? toLocalISOString(new Date(
+        dateRange.to.getFullYear(),
+        dateRange.to.getMonth(),
+        dateRange.to.getDate(),
+        23,
+        59,
+        59
+      ))
+    : toLocalISOString(new Date());
+    
+  const lastAppointmentStartDate = lastAppointmentDateRange?.from ? toLocalISOString(lastAppointmentDateRange.from) : undefined;
+  const lastAppointmentEndDate = lastAppointmentDateRange?.to 
+    ? toLocalISOString(new Date(
+        lastAppointmentDateRange.to.getFullYear(),
+        lastAppointmentDateRange.to.getMonth(),
+        lastAppointmentDateRange.to.getDate(),
+        23,
+        59,
+        59
+      ))
+    : undefined;
 
   // Buscar métricas
   const { data, isLoading, error } = usePatientsMetrics({

@@ -78,7 +78,7 @@ export class AppointmentDAO {
           ...filters,
         },
         _sum: { examValue: true, paidValue: true },
-        _avg: { examValue: true },
+        _avg: { examValue: true, paidValue: true },
         _count: { id: true },
       });
     } catch (error) {
