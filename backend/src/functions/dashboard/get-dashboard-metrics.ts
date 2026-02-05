@@ -4,20 +4,22 @@ import { appointmentDAO } from '@/DAO/appointment';
 import { patientDAO } from '@/DAO/patient';
 import { prisma } from '@/lib/prisma';
 import { startOfMonth, endOfMonth, differenceInMonths, format, startOfDay, endOfDay } from 'date-fns';
-import { toZonedTime } from 'date-fns-tz';
+import { toDate } from 'date-fns-tz';
 
 const TIMEZONE = 'America/Recife';
 
 const querySchema = z.object({
   startDate: z.string().transform((val) => {
-    // Criar data UTC diretamente da string YYYY-MM-DD
-    const date = new Date(val + 'T00:00:00.000Z');
-    return date;
+    // Interpretar a data como horário de Recife (UTC-3) e converter para UTC
+    // Ex: "2026-02-05" -> 2026-02-05 00:00:00 America/Recife -> 2026-02-05 03:00:00 UTC
+    const dateStr = `${val}T00:00:00`;
+    return toDate(dateStr, { timeZone: TIMEZONE });
   }),
   endDate: z.string().transform((val) => {
-    // Criar data UTC para o final do dia
-    const date = new Date(val + 'T23:59:59.999Z');
-    return date;
+    // Interpretar a data como horário de Recife (UTC-3) e converter para UTC
+    // Ex: "2026-02-05" -> 2026-02-05 23:59:59.999 America/Recife -> 2026-02-06 02:59:59.999 UTC
+    const dateStr = `${val}T23:59:59.999`;
+    return toDate(dateStr, { timeZone: TIMEZONE });
   }),
 });
 
