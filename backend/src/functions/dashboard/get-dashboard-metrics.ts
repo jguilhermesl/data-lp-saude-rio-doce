@@ -10,18 +10,14 @@ const TIMEZONE = 'America/Recife';
 
 const querySchema = z.object({
   startDate: z.string().transform((val) => {
-    // Criar data local sem conversão de timezone
-    const [year, month, day] = val.split('-').map(Number);
-    const localDate = new Date(year, month - 1, day);
-    // Normalizar para início do dia no timezone de Recife
-    return startOfDay(toZonedTime(localDate, TIMEZONE));
+    // Criar data UTC diretamente da string YYYY-MM-DD
+    const date = new Date(val + 'T00:00:00.000Z');
+    return date;
   }),
   endDate: z.string().transform((val) => {
-    // Criar data local sem conversão de timezone
-    const [year, month, day] = val.split('-').map(Number);
-    const localDate = new Date(year, month - 1, day);
-    // Normalizar para final do dia no timezone de Recife
-    return endOfDay(toZonedTime(localDate, TIMEZONE));
+    // Criar data UTC para o final do dia
+    const date = new Date(val + 'T23:59:59.999Z');
+    return date;
   }),
 });
 

@@ -4,8 +4,8 @@ import { prisma } from '@/lib/prisma';
 import { startOfMonth, endOfMonth, differenceInMonths, format } from 'date-fns';
 
 const querySchema = z.object({
-  startDate: z.string().transform((val) => new Date(val)),
-  endDate: z.string().transform((val) => new Date(val)),
+  startDate: z.string().transform((val) => new Date(val + 'T00:00:00.000Z')),
+  endDate: z.string().transform((val) => new Date(val + 'T23:59:59.999Z')),
   category: z.string().optional(),
   search: z.string().optional(),
 });

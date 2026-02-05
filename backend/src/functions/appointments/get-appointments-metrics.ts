@@ -4,8 +4,8 @@ import { appointmentDAO } from '@/DAO/appointment';
 import { prisma } from '@/lib/prisma';
 
 const querySchema = z.object({
-  startDate: z.string().transform((val) => new Date(val)),
-  endDate: z.string().transform((val) => new Date(val)),
+  startDate: z.string().transform((val) => new Date(val + 'T00:00:00.000Z')),
+  endDate: z.string().transform((val) => new Date(val + 'T23:59:59.999Z')),
   page: z.string().optional().transform((val) => (val ? parseInt(val) : 1)),
   limit: z.string().optional().transform((val) => (val ? parseInt(val) : 100)),
   search: z.string().optional(),
