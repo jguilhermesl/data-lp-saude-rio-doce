@@ -2,6 +2,7 @@ import { handleErrors } from '@/utils/handle-errors';
 import { z } from 'zod';
 import { procedureDAO } from '@/DAO/procedure';
 import { prisma } from '@/lib/prisma';
+import { Prisma } from '@prisma/client';
 
 const querySchema = z.object({
   startDate: z.string().transform((val) => new Date(val)),
@@ -25,10 +26,8 @@ export const getProceduresMetrics = async (req: any, res: any) => {
       ];
     }
 
-    const skip = (page - 1) * limit;
-
-    // Buscar métricas e procedimentos em paralelo
-    const [topSelling, topRevenue, procedures, total] = await Promise.all([
+    // Buscar métricas e TODOS os procedimentos (sem paginação ainda)
+    const [topSelling, topRevenue, allProcedures, total] = await Promise.all([
       procedureDAO.getTopSellingProcedures(startDate, endDate, 10),
       procedureDAO.getTopRevenueProcedures(startDate, endDate, 10),
       procedureDAO.findMany(
@@ -40,12 +39,64 @@ export const getProceduresMetrics = async (req: any, res: any) => {
             },
           },
         },
-        { name: 'asc' },
-        skip,
-        limit
+        undefined, // Sem ordenação inicial
+        undefined, // Sem skip
+        undefined  // Sem limit - buscar todos
       ),
       procedureDAO.count(where),
     ]);
+
+    // Buscar faturamento e quantidade de atendimentos no período para TODOS os procedimentos
+    const procedureIds = allProcedures.map((p) => p.id);
+    
+    // Buscar appointment_procedures do período com os dados de appointments
+    const appointmentProcedures = procedureIds.length > 0
+      ? await prisma.appointmentProcedure.findMany({
+          where: {
+            procedureId: { in: procedureIds },
+            appointment: {
+              appointmentDate: {
+                gte: startDate,
+                lte: endDate,
+              },
+            },
+          },
+          select: {
+            procedureId: true,
+            appointmentId: true,
+            appointment: {
+              select: {
+                paidValue: true,
+              },
+            },
+          },
+        })
+      : [];
+
+    // Calcular métricas por procedimento
+    const metricsMap = new Map<string, { totalRevenue: number; appointmentCount: number }>();
+    
+    for (const ap of appointmentProcedures) {
+      const existing = metricsMap.get(ap.procedureId) || { totalRevenue: 0, appointmentCount: 0 };
+      metricsMap.set(ap.procedureId, {
+        totalRevenue: existing.totalRevenue + Number(ap.appointment.paidValue || 0),
+        appointmentCount: existing.appointmentCount + 1,
+      });
+    }
+
+    // Mapear métricas para todos os procedimentos e ordenar
+    const allProceduresWithMetrics = allProcedures.map((procedure) => {
+      const metrics = metricsMap.get(procedure.id);
+      return {
+        ...procedure,
+        periodRevenue: metrics?.totalRevenue || 0,
+        periodAppointmentCount: metrics?.appointmentCount || 0,
+      };
+    }).sort((a, b) => b.periodRevenue - a.periodRevenue); // Ordenar por faturamento no período (maior primeiro)
+
+    // AGORA aplicar paginação nos resultados ordenados
+    const skip = (page - 1) * limit;
+    const proceduresWithMetrics = allProceduresWithMetrics.slice(skip, skip + limit);
 
     // Buscar nomes dos procedimentos para topSelling e topRevenue
     // Validar e filtrar apenas UUIDs válidos antes de criar o Set
@@ -126,7 +177,7 @@ export const getProceduresMetrics = async (req: any, res: any) => {
       },
       topSelling: topSellingData,
       topRevenue: topRevenueData,
-      procedures: procedures,
+      procedures: proceduresWithMetrics,
       pagination: {
         page,
         limit,

@@ -14,16 +14,20 @@ export const exportProceduresToExcel = (
   const allProceduresData = procedures.map((procedure) => ({
     'Procedimento': procedure.name,
     'Código': procedure.code || 'N/A',
-    'Preço Padrão': Number(procedure.defaultPrice?.toFixed(2) || 0),
-    'Vezes Realizado': procedure._count.appointmentProcedures,
+    'Faturamento no Período': procedure.periodRevenue ? Number(Number(procedure.periodRevenue).toFixed(2)) : 0,
+    'Qtd. Atendimentos no Período': procedure.periodAppointmentCount || 0,
+    'Preço Padrão': procedure.defaultPrice ? Number(Number(procedure.defaultPrice).toFixed(2)) : 0,
+    'Total de Vezes Realizado': procedure._count.appointmentProcedures,
   }));
 
   const ws1 = XLSX.utils.json_to_sheet(allProceduresData);
   ws1['!cols'] = [
     { wch: 40 }, // Procedimento
     { wch: 15 }, // Código
+    { wch: 25 }, // Faturamento no Período
+    { wch: 28 }, // Qtd. Atendimentos no Período
     { wch: 15 }, // Preço Padrão
-    { wch: 18 }, // Vezes Realizado
+    { wch: 25 }, // Total de Vezes Realizado
   ];
   XLSX.utils.book_append_sheet(wb, ws1, 'Todos os Procedimentos');
 
@@ -35,9 +39,9 @@ export const exportProceduresToExcel = (
       'Código': procedure.code || 'N/A',
       'Quantidade Vendida': procedure.quantitySold,
       'Vezes Realizado': procedure.timesOrdered,
-      'Faturamento Total': Number(procedure.totalRevenue.toFixed(2)),
-      'Preço Médio': Number(procedure.averagePrice.toFixed(2)),
-      'Preço Padrão': procedure.defaultPrice ? Number(procedure.defaultPrice.toFixed(2)) : 'N/A',
+      'Faturamento Total': Number(Number(procedure.totalRevenue).toFixed(2)),
+      'Preço Médio': Number(Number(procedure.averagePrice).toFixed(2)),
+      'Preço Padrão': procedure.defaultPrice ? Number(Number(procedure.defaultPrice).toFixed(2)) : 'N/A',
     }));
 
     const ws2 = XLSX.utils.json_to_sheet(topSellingData);
@@ -60,11 +64,11 @@ export const exportProceduresToExcel = (
       'Ranking': index + 1,
       'Procedimento': procedure.name,
       'Código': procedure.code || 'N/A',
-      'Faturamento Total': Number(procedure.totalRevenue.toFixed(2)),
+      'Faturamento Total': Number(Number(procedure.totalRevenue).toFixed(2)),
       'Quantidade Vendida': procedure.quantitySold,
       'Vezes Realizado': procedure.timesOrdered,
-      'Preço Médio': Number(procedure.averagePrice.toFixed(2)),
-      'Preço Padrão': procedure.defaultPrice ? Number(procedure.defaultPrice.toFixed(2)) : 'N/A',
+      'Preço Médio': Number(Number(procedure.averagePrice).toFixed(2)),
+      'Preço Padrão': procedure.defaultPrice ? Number(Number(procedure.defaultPrice).toFixed(2)) : 'N/A',
     }));
 
     const ws3 = XLSX.utils.json_to_sheet(topRevenueData);

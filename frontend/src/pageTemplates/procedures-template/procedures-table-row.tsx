@@ -27,10 +27,13 @@ export const ProceduresTableRow = ({ procedure }: ProceduresTableRowProps) => {
     <Table.Row>
       <Table.Col className="font-medium">{procedure.name}</Table.Col>
       <Table.Col className="font-medium">
-        {formatCurrency(procedure.defaultPrice)}
+        {formatCurrency(procedure.periodRevenue)}
       </Table.Col>
       <Table.Col className="font-medium">
-        {procedure._count.appointmentProcedures}
+        {procedure.periodAppointmentCount}
+      </Table.Col>
+      <Table.Col className="font-medium">
+        {formatCurrency(procedure.defaultPrice)}
       </Table.Col>
       <Table.Col>
         <Button variant="ghost" size="sm" onClick={handleViewDetails}>

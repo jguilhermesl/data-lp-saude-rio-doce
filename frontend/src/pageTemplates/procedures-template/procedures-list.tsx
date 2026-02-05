@@ -28,8 +28,9 @@ export const ProceduresList = ({
 }: ProceduresListProps) => {
   const headers = [
     'Nome do procedimento',
+    'Faturamento no período',
+    'Qtd. atendimentos no período',
     'Preço padrão',
-    'Nº de atendimentos',
     '',
   ];
 

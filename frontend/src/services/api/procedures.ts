@@ -36,6 +36,8 @@ export interface Procedure {
   _count: {
     appointmentProcedures: number;
   };
+  periodRevenue: number;
+  periodAppointmentCount: number;
 }
 
 export interface ProceduresMetricsResponse {
