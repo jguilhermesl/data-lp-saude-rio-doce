@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { spawn } from 'child_process';
 import { join } from 'path';
+import { env } from '@/env';
 
 /**
  * Interface para resultado de execução
@@ -14,14 +15,39 @@ interface ExecutionResult {
 }
 
 /**
+ * Determina o comando e caminho correto baseado no ambiente
+ */
+function getScriptConfig(scriptPath: string) {
+  const isProduction = env.NODE_ENV === 'production';
+  
+  if (isProduction) {
+    // Em produção, usar node e arquivos compilados em dist/
+    const compiledPath = scriptPath.replace('src/', 'dist/').replace('.ts', '.js');
+    return {
+      command: 'node',
+      path: compiledPath,
+      cwd: join(__dirname, '../../..'), // Em produção, estamos em dist/functions/sync, volta para backend/
+    };
+  } else {
+    // Em desenvolvimento, usar tsx e arquivos TypeScript em src/
+    return {
+      command: 'tsx',
+      path: scriptPath,
+      cwd: join(__dirname, '../../..'), // Em dev, estamos em src/functions/sync, volta para backend/
+    };
+  }
+}
+
+/**
  * Executa um script de importação
  */
 function executeImportScript(scriptPath: string, scriptName: string): Promise<ExecutionResult> {
   return new Promise((resolve) => {
     const startTime = Date.now();
+    const config = getScriptConfig(scriptPath);
     
-    const child = spawn('tsx', [scriptPath], {
-      cwd: join(__dirname, '../..'),
+    const child = spawn(config.command, [config.path], {
+      cwd: config.cwd,
       stdio: 'pipe',
     });
 
@@ -111,53 +137,50 @@ export async function executeSync(req: Request, res: Response) {
       
       if (!result.success) {
         hasErrors = true;
-        break; // Abortar fases seguintes se houver erro
+        // Abortar fases seguintes se houver erro na Fase 1
+        throw new Error(`Erro na Fase 1: ${script.name}`);
       }
     }
 
     // ============================================
     // FASE 2: Relacionamento Médico-Especialidade
     // ============================================
-    if (!hasErrors) {
-      const phase2Result = await executeSequential({
-        path: 'src/scripts/import-doctor-specialties.ts',
-        name: 'import-doctor-specialties',
-      });
-      results.push(phase2Result);
+    const phase2Result = await executeSequential({
+      path: 'src/scripts/import-doctor-specialties.ts',
+      name: 'import-doctor-specialties',
+    });
+    results.push(phase2Result);
 
-      if (!phase2Result.success) {
-        hasErrors = true;
-      }
+    if (!phase2Result.success) {
+      hasErrors = true;
+      // Continua para Fase 3 mesmo com erro (seguindo lógica do sync-all.ts)
     }
 
     // ============================================
     // FASE 3: Atendimentos
     // ============================================
-    if (!hasErrors) {
-      const phase3Result = await executeSequential({
-        path: 'src/scripts/import-appointments.ts',
-        name: 'import-appointments',
-      });
-      results.push(phase3Result);
+    const phase3Result = await executeSequential({
+      path: 'src/scripts/import-appointments.ts',
+      name: 'import-appointments',
+    });
+    results.push(phase3Result);
 
-      if (!phase3Result.success) {
-        hasErrors = true;
-      }
+    if (!phase3Result.success) {
+      hasErrors = true;
+      // Continua para Fase 4 mesmo com erro (seguindo lógica do sync-all.ts)
     }
 
     // ============================================
     // FASE 4: Relacionamentos Appointment-Procedimentos
     // ============================================
-    if (!hasErrors) {
-      const phase4Result = await executeSequential({
-        path: 'src/scripts/import-appointment-procedures.ts',
-        name: 'import-appointment-procedures',
-      });
-      results.push(phase4Result);
+    const phase4Result = await executeSequential({
+      path: 'src/scripts/import-appointment-procedures.ts',
+      name: 'import-appointment-procedures',
+    });
+    results.push(phase4Result);
 
-      if (!phase4Result.success) {
-        hasErrors = true;
-      }
+    if (!phase4Result.success) {
+      hasErrors = true;
     }
 
     // ============================================

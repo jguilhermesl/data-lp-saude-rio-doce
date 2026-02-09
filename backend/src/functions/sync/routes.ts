@@ -1,6 +1,4 @@
 import { Router } from 'express';
-import { authMiddleware } from '@/middlewares/auth-middleware';
-import { onlyAdminMiddleware } from '@/middlewares/only-admin-middleware';
 import { executeSync } from './execute-sync';
 
 const routerSync = Router();

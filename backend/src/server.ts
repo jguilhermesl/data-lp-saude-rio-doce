@@ -28,8 +28,9 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Registrar todas as rotas
-app.use(routerUsers);
+app.use(routerSync);
 app.use(routerAuth);
+app.use(routerUsers);
 app.use(routerAppointments);
 app.use(routerDoctors);
 app.use(routerPatients);
@@ -38,6 +39,5 @@ app.use(routerSpecialties);
 app.use(routerDashboard);
 app.use(routerExpenses);
 app.use(routerFinancial);
-app.use(routerSync);
 
 app.listen(PORT, () => console.log(`Servidor rodando na porta ${PORT}!!!`));
