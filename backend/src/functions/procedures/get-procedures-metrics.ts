@@ -5,8 +5,20 @@ import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
 
 const querySchema = z.object({
-  startDate: z.string().transform((val) => new Date(val)),
-  endDate: z.string().transform((val) => new Date(val)),
+  startDate: z.string().min(1, 'startDate is required').transform((val) => {
+    const date = new Date(val);
+    if (isNaN(date.getTime())) {
+      throw new Error('Invalid startDate format. Expected ISO date string or YYYY-MM-DD');
+    }
+    return new Date(date.toISOString().split('T')[0] + 'T00:00:00.000Z');
+  }),
+  endDate: z.string().min(1, 'endDate is required').transform((val) => {
+    const date = new Date(val);
+    if (isNaN(date.getTime())) {
+      throw new Error('Invalid endDate format. Expected ISO date string or YYYY-MM-DD');
+    }
+    return new Date(date.toISOString().split('T')[0] + 'T23:59:59.999Z');
+  }),
   page: z.string().optional().transform((val) => (val ? parseInt(val) : 1)),
   limit: z.string().optional().transform((val) => (val ? parseInt(val) : 10)),
   search: z.string().optional(),

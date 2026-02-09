@@ -4,15 +4,45 @@ import { patientDAO } from '@/DAO/patient';
 import { prisma } from '@/lib/prisma';
 
 const querySchema = z.object({
-  startDate: z.string().transform((val) => new Date(val + 'T00:00:00.000Z')),
-  endDate: z.string().transform((val) => new Date(val + 'T23:59:59.999Z')),
+  startDate: z.string().min(1, 'startDate is required').transform((val) => {
+    // Handle both ISO format (2026-02-01T00:00:00.000Z) and date-only format (2026-02-01)
+    const date = new Date(val);
+    if (isNaN(date.getTime())) {
+      throw new Error('Invalid startDate format. Expected ISO date string or YYYY-MM-DD');
+    }
+    // Ensure we use the start of the day
+    return new Date(date.toISOString().split('T')[0] + 'T00:00:00.000Z');
+  }),
+  endDate: z.string().min(1, 'endDate is required').transform((val) => {
+    // Handle both ISO format (2026-02-28T23:59:59.000Z) and date-only format (2026-02-28)
+    const date = new Date(val);
+    if (isNaN(date.getTime())) {
+      throw new Error('Invalid endDate format. Expected ISO date string or YYYY-MM-DD');
+    }
+    // Ensure we use the end of the day
+    return new Date(date.toISOString().split('T')[0] + 'T23:59:59.999Z');
+  }),
   page: z.string().optional().transform((val) => (val ? parseInt(val) : 1)),
   limit: z.string().optional().transform((val) => (val ? parseInt(val) : 100)),
   search: z.string().optional(),
   minSpent: z.string().optional().transform((val) => (val ? parseFloat(val) : undefined)),
   maxSpent: z.string().optional().transform((val) => (val ? parseFloat(val) : undefined)),
-  lastAppointmentStartDate: z.string().optional().transform((val) => (val ? new Date(val) : undefined)),
-  lastAppointmentEndDate: z.string().optional().transform((val) => (val ? new Date(val) : undefined)),
+  lastAppointmentStartDate: z.string().optional().transform((val) => {
+    if (!val) return undefined;
+    const date = new Date(val);
+    if (isNaN(date.getTime())) {
+      throw new Error('Invalid lastAppointmentStartDate format');
+    }
+    return date;
+  }),
+  lastAppointmentEndDate: z.string().optional().transform((val) => {
+    if (!val) return undefined;
+    const date = new Date(val);
+    if (isNaN(date.getTime())) {
+      throw new Error('Invalid lastAppointmentEndDate format');
+    }
+    return date;
+  }),
 });
 
 export const getPatientsMetrics = async (req: any, res: any) => {
