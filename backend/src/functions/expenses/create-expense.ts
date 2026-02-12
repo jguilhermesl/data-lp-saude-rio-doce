@@ -17,11 +17,16 @@ export const createExpense = async (req: any, res: any) => {
 
     const dao = new ExpenseDAO();
 
+    // Converte a data considerando o timezone brasileiro (UTC-3)
+    // Isso garante que a data seja salva corretamente sem mudança de dia
+    const parsedDate = new Date(date);
+    const localDate = new Date(parsedDate.getTime() + parsedDate.getTimezoneOffset() * 60000);
+
     // Cria a despesa
     const expense = await dao.createOne({
       payment,
       value,
-      date: new Date(date),
+      date: localDate,
       category,
     });
 

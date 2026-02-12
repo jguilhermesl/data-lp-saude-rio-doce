@@ -404,28 +404,34 @@ export const FinancialPDFReport = ({
               </Text>
             </View>
 
-            {data.expenses.map((expense, index) => (
-              <View
-                key={expense.id}
-                style={[
-                  styles.tableRow,
-                  ...(index % 2 === 0 ? [styles.tableRowEven] : []),
-                ]}
-              >
-                <Text style={[styles.tableCell, styles.col1]}>
-                  {format(new Date(expense.date), 'dd/MM/yyyy')}
-                </Text>
-                <Text style={[styles.tableCell, styles.col2]}>
-                  {expense.payment}
-                </Text>
-                <Text style={[styles.tableCell, styles.col3]}>
-                  {expense.category}
-                </Text>
-                <Text style={[styles.tableCell, styles.col4]}>
-                  {formatCurrency(expense.value)}
-                </Text>
-              </View>
-            ))}
+            {data.expenses.map((expense, index) => {
+              // Extrai apenas a parte da data (YYYY-MM-DD) para evitar problemas de timezone
+              const [year, month, day] = expense.date.split('T')[0].split('-');
+              const formattedDate = `${day}/${month}/${year}`;
+              
+              return (
+                <View
+                  key={expense.id}
+                  style={[
+                    styles.tableRow,
+                    ...(index % 2 === 0 ? [styles.tableRowEven] : []),
+                  ]}
+                >
+                  <Text style={[styles.tableCell, styles.col1]}>
+                    {formattedDate}
+                  </Text>
+                  <Text style={[styles.tableCell, styles.col2]}>
+                    {expense.payment}
+                  </Text>
+                  <Text style={[styles.tableCell, styles.col3]}>
+                    {expense.category}
+                  </Text>
+                  <Text style={[styles.tableCell, styles.col4]}>
+                    {formatCurrency(expense.value)}
+                  </Text>
+                </View>
+              );
+            })}
           </View>
         </View>
 

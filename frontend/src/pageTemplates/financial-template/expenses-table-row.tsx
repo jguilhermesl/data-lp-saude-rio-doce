@@ -66,12 +66,9 @@ export const ExpensesTableRow = ({
   };
 
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('pt-BR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-    });
+    // Extrai apenas a parte da data (YYYY-MM-DD) para evitar problemas de timezone
+    const [year, month, day] = dateString.split('T')[0].split('-');
+    return `${day}/${month}/${year}`;
   };
 
   const getCategoryColor = (category: string) => {

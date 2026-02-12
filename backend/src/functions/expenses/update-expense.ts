@@ -30,7 +30,12 @@ export const updateExpense = async (req: any, res: any) => {
 
     if (data.payment !== undefined) updateData.payment = data.payment;
     if (data.value !== undefined) updateData.value = data.value;
-    if (data.date !== undefined) updateData.date = new Date(data.date);
+    if (data.date !== undefined) {
+      // Converte a data considerando o timezone brasileiro (UTC-3)
+      // Isso garante que a data seja salva corretamente sem mudança de dia
+      const parsedDate = new Date(data.date);
+      updateData.date = new Date(parsedDate.getTime() + parsedDate.getTimezoneOffset() * 60000);
+    }
     if (data.category !== undefined) updateData.category = data.category;
 
     // Atualiza a despesa
