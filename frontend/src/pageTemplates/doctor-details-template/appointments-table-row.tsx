@@ -16,6 +16,7 @@ interface Appointment {
   paidValue?: number;
   paymentDone: boolean;
   insuranceName?: string;
+  status?: string;
   patient: {
     id: string;
     fullName: string;
@@ -75,15 +76,13 @@ export const AppointmentsTableRow = ({ appointment }: AppointmentsTableRowProps)
           : '-'}
       </Table.Col>
       <Table.Col className="text-center">
-        <span
-          className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-            appointment.paymentDone
-              ? 'bg-green-100 text-green-800'
-              : 'bg-yellow-100 text-yellow-800'
-          }`}
-        >
-          {appointment.paymentDone ? 'Pago' : 'Pendente'}
-        </span>
+        {appointment.status ? (
+          <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
+            {appointment.status}
+          </span>
+        ) : (
+          <span className="text-gray-400">-</span>
+        )}
       </Table.Col>
     </Table.Row>
   );

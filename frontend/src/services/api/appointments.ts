@@ -55,6 +55,7 @@ export interface Appointment {
   appointmentTime: string | null;
   appointmentAt: Date | null;
   insuranceName: string | null;
+  status: string | null;
   examsRaw: string | null;
   examValue: number | null;
   paidValue: number | null;

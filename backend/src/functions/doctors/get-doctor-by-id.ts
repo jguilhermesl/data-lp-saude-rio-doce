@@ -1,4 +1,5 @@
 import { handleErrors } from '@/utils/handle-errors';
+import { calculateTotalRevenue } from '@/utils/calculate-revenue';
 import { z } from 'zod';
 import { doctorDAO } from '@/DAO/doctor';
 import { prisma } from '@/lib/prisma';
@@ -17,16 +18,29 @@ export const getDoctorById = async (req: any, res: any) => {
     const { id } = paramsSchema.parse(req.params);
     const { startDate, endDate } = querySchema.parse(req.query);
 
-    // Build date filter
+    // Build date filter for appointments (appointmentDate OR createdDate)
     const dateFilter: any = {};
-    if (startDate) {
-      dateFilter.gte = new Date(startDate);
+    if (startDate && endDate) {
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      
+      dateFilter.OR = [
+        { appointmentDate: { gte: start, lte: end } },
+        { createdDate: { gte: start, lte: end } },
+      ];
+    } else if (startDate) {
+      const start = new Date(startDate);
+      dateFilter.OR = [
+        { appointmentDate: { gte: start } },
+        { createdDate: { gte: start } },
+      ];
+    } else if (endDate) {
+      const end = new Date(endDate);
+      dateFilter.OR = [
+        { appointmentDate: { lte: end } },
+        { createdDate: { lte: end } },
+      ];
     }
-    if (endDate) {
-      dateFilter.lte = new Date(endDate);
-    }
-
-    const appointmentDateFilter = Object.keys(dateFilter).length > 0 ? dateFilter : undefined;
 
     // Get doctor basic information
     const doctor = await prisma.doctor.findUnique({
@@ -49,16 +63,19 @@ export const getDoctorById = async (req: any, res: any) => {
       return res.status(404).send({ message: 'Médico não encontrado' });
     }
 
-    // Get appointments with filters
+    // Get appointments with filters (appointmentDate OR createdDate in period)
     const appointments = await prisma.appointment.findMany({
       where: {
         doctorId: id,
-        ...(appointmentDateFilter && { appointmentDate: appointmentDateFilter }),
+        ...dateFilter,
       },
+
       select: {
         id: true,
         appointmentDate: true,
         appointmentTime: true,
+        createdDate: true,
+        status: true,
         examValue: true,
         paidValue: true,
         paymentDone: true,
@@ -90,10 +107,12 @@ export const getDoctorById = async (req: any, res: any) => {
       },
     });
 
-    // Calculate metrics
-    const totalRevenue = appointments.reduce((sum, appointment) => {
-      return sum + (appointment.paidValue ? Number(appointment.paidValue) : 0);
-    }, 0);
+    // Calculate metrics using utility function
+    // Use very old/future dates if no period is specified to include all appointments
+    const start = startDate ? new Date(startDate) : new Date('1900-01-01');
+    const end = endDate ? new Date(endDate) : new Date('2100-12-31');
+    
+    const totalRevenue = calculateTotalRevenue(appointments, start, end);
 
     const totalAppointments = appointments.length;
     const averageTicket = totalAppointments > 0 ? totalRevenue / totalAppointments : 0;
@@ -151,6 +170,7 @@ export const getDoctorById = async (req: any, res: any) => {
         id: appointment.id,
         appointmentDate: appointment.appointmentDate,
         appointmentTime: appointment.appointmentTime,
+        status: appointment.status,
         examValue: appointment.examValue,
         paidValue: appointment.paidValue,
         paymentDone: appointment.paymentDone,

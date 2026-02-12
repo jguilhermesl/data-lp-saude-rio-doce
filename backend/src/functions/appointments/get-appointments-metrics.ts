@@ -1,4 +1,5 @@
 import { handleErrors } from '@/utils/handle-errors';
+import { calculateTotalRevenue, filterAppointmentsForRevenue } from '@/utils/calculate-revenue';
 import { z } from 'zod';
 import { appointmentDAO } from '@/DAO/appointment';
 import { prisma } from '@/lib/prisma';
@@ -52,11 +53,13 @@ export const getAppointmentsMetrics = async (req: any, res: any) => {
 
     const skip = (page - 1) * limit;
 
+    console.log(startDate, endDate)
+    
     // Buscar atendimentos e métricas em paralelo
     const [
       appointments,
       total,
-      financial,
+      appointmentsForRevenue,
       todayAppointments,
       byDoctor,
       timeSeries,
@@ -102,11 +105,27 @@ export const getAppointmentsMetrics = async (req: any, res: any) => {
         take: limit,
       }),
       appointmentDAO.count(where),
-      appointmentDAO.getFinancialMetrics(startDate, endDate, {}),
+      // Buscar appointments para calcular faturamento (appointmentDate OR createdDate)
+      prisma.appointment.findMany({
+        where: {
+          OR: [
+            { appointmentDate: { gte: startDate, lte: endDate } },
+            { createdDate: { gte: startDate, lte: endDate } },
+          ],
+        },
+        select: {
+          paidValue: true,
+          status: true,
+          createdDate: true,
+          appointmentDate: true,
+        },
+      }),
       appointmentDAO.getTodayAppointments(),
       appointmentDAO.getByDoctor(startDate, endDate),
       appointmentDAO.getTimeSeriesData(startDate, endDate, 'month'),
     ]);
+
+    console.log("app ", appointments.length)
 
     // Processar dados por médico
     const byDoctorData = await Promise.all(
@@ -121,7 +140,7 @@ export const getAppointmentsMetrics = async (req: any, res: any) => {
           name: doctor?.name || 'Desconhecido',
           crm: doctor?.crm,
           appointmentCount: item._count.id,
-          totalRevenue: Number(item._sum.examValue || 0),
+          totalRevenue: Number(item._sum.paidValue || 0),
           averageTicket: Number(item._avg.examValue || 0),
         };
       })
@@ -135,10 +154,14 @@ export const getAppointmentsMetrics = async (req: any, res: any) => {
       received: Number(item.received || 0),
     }));
 
-    // Calcular métricas do período
-    const totalRevenue = Number(financial._sum.examValue || 0);
-    const averageTicket = Number(financial._avg.examValue || 0);
-    const totalAppointmentsPeriod = financial._count.id;
+    // Calcular métricas do período usando o utilitário
+    const totalRevenue = calculateTotalRevenue(appointmentsForRevenue, startDate, endDate);
+    
+    // Filtrar appointments que devem ser incluídos no faturamento
+    const appointmentsInRevenue = filterAppointmentsForRevenue(appointmentsForRevenue, startDate, endDate);
+    
+    const totalAppointmentsPeriod = appointmentsInRevenue.length;
+    const averageTicket = totalAppointmentsPeriod > 0 ? totalRevenue / totalAppointmentsPeriod : 0;
 
     // Resposta
     const response = {
@@ -157,6 +180,7 @@ export const getAppointmentsMetrics = async (req: any, res: any) => {
         appointmentTime: apt.appointmentTime,
         appointmentAt: apt.appointmentAt,
         insuranceName: apt.insuranceName,
+        status: apt.status,
         examsRaw: apt.examsRaw,
         examValue: apt.examValue ? Number(apt.examValue) : null,
         paidValue: apt.paidValue ? Number(apt.paidValue) : null,

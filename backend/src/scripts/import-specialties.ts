@@ -36,7 +36,7 @@ const API_CONFIG = {
     'Cookie': 'dotproject=hllhp910t3ar325ms9m3tq7el6; PHPSESSID=kd2rmta1sup8elfvpcsr04nrq4',
   },
   sourceSystem: 's2web',
-  rowsPerPage: 50,
+  rowsPerPage: 300, // Otimizado: 50 → 300 para reduzir número de requisições
 };
 
 /**
@@ -155,8 +155,8 @@ async function importSpecialties() {
       console.log(''); // Linha em branco para separar páginas
       page++;
 
-      // Pequeno delay entre requisições para não sobrecarregar a API
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      // Delay otimizado entre requisições (500ms → 100ms)
+      await new Promise((resolve) => setTimeout(resolve, 100));
     }
 
     // Resumo final

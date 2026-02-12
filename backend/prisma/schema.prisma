@@ -159,6 +159,7 @@ model Appointment {
   examValue     Decimal? @db.Decimal(10, 2) // valor do exame
   paidValue     Decimal? @db.Decimal(10, 2) // valor pago
   paymentDone   Boolean  @default(false) // pagamento realizado
+  status        String? // status do atendimento (ex: PRÉ-PAGO, PARTICULAR, etc)
 
   // Exames (raw do sistema atual, caso venha como texto)
   examsRaw String? @db.Text

@@ -31,6 +31,7 @@ export const AppointmentsList = ({
     'Paciente',
     'Médico',
     'Convênio',
+    'Status',
     'Valor Pago',
     'Ações',
   ];

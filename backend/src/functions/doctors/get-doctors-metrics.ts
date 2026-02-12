@@ -1,4 +1,5 @@
 import { handleErrors } from '@/utils/handle-errors';
+import { calculateTotalRevenue } from '@/utils/calculate-revenue';
 import { z } from 'zod';
 import { doctorDAO } from '@/DAO/doctor';
 import { prisma } from '@/lib/prisma';
@@ -36,12 +37,16 @@ export const getDoctorsMetrics = async (req: any, res: any) => {
       : {};
 
     // Buscar TODOS os médicos (não apenas os que têm atendimentos no período)
+    // Filtro: appointmentDate OU createdDate dentro do período
     const allDoctors = await prisma.doctor.findMany({
       where: whereFilter,
       include: {
         appointments: {
           where: {
-            appointmentDate: { gte: startDate, lte: endDate },
+            OR: [
+              { appointmentDate: { gte: startDate, lte: endDate } },
+              { createdDate: { gte: startDate, lte: endDate } },
+            ],
           },
           select: {
             id: true,
@@ -49,6 +54,8 @@ export const getDoctorsMetrics = async (req: any, res: any) => {
             paidValue: true,
             patientId: true,
             appointmentDate: true,
+            createdDate: true,
+            status: true,
           },
         },
         doctorSpecialties: {
@@ -66,15 +73,10 @@ export const getDoctorsMetrics = async (req: any, res: any) => {
 
     // Processar métricas de cada médico
     const metricsPromises = allDoctors.map(async (doctor) => {
-      // Calcular faturamento e atendimentos
-      const totalRevenue = doctor.appointments.reduce(
-        (sum, apt) => sum + Number(apt.examValue || 0),
-        0
-      );
-      const receivedRevenue = doctor.appointments.reduce(
-        (sum, apt) => sum + Number(apt.paidValue || 0),
-        0
-      );
+      // Calcular faturamento usando o utilitário
+      const totalRevenue = calculateTotalRevenue(doctor.appointments, startDate, endDate);
+      const receivedRevenue = calculateTotalRevenue(doctor.appointments, startDate, endDate);
+      
       const appointmentCount = doctor.appointments.length;
       const averageTicket = appointmentCount > 0 ? totalRevenue / appointmentCount : 0;
 

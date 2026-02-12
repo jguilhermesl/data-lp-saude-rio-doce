@@ -66,7 +66,10 @@ export const AppointmentsTableRow = ({
         {appointment.insuranceName || 'Particular'}
       </Table.Col>
 
-
+      {/* Status */}
+      <Table.Col className="font-medium">
+        {appointment.status || '-'}
+      </Table.Col>
 
       {/* Valor Pago */}
       <Table.Col className="font-medium whitespace-nowrap">

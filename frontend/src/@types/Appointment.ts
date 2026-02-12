@@ -6,6 +6,7 @@ export interface Appointment {
   paidValue?: number;
   paymentDone: boolean;
   insuranceName?: string;
+  status?: string;
   doctor: {
     id: string;
     name: string;

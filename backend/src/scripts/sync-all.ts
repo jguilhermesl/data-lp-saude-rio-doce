@@ -136,10 +136,10 @@ async function syncAll() {
 
   try {
     // ============================================
-    // FASE 1: Importações Base (Sequencial)
+    // FASE 1: Importações Base (Paralelo - OTIMIZADO)
     // ============================================
     console.log(`${colors.yellow}📦 FASE 1: Importações Base${colors.reset}\n`);
-    console.log(`${colors.cyan}ℹ️  Executando sequencialmente para evitar limite de conexões${colors.reset}\n`);
+    console.log(`${colors.cyan}⚡ Executando em PARALELO para melhor performance${colors.reset}\n`);
     
     const phase1Scripts = [
       { path: 'src/scripts/import-specialties.ts', name: 'import-specialties' },
@@ -148,16 +148,19 @@ async function syncAll() {
       { path: 'src/scripts/import-procedures.ts', name: 'import-procedures' },
     ];
 
-    // Executar sequencialmente para evitar problemas de conexão
-    for (const script of phase1Scripts) {
-      const result = await executeSequential(script);
-      results.push(result);
-      
-      if (!result.success) {
-        hasErrors = true;
-        console.log(`${colors.red}⚠️  Erro em ${script.name}. Abortando fases seguintes.${colors.reset}\n`);
-        throw new Error(`Erro na Fase 1: ${script.name}`);
-      }
+    // Executar em PARALELO - estas importações são independentes
+    const phase1Results = await executeParallel(phase1Scripts);
+    results.push(...phase1Results);
+    
+    // Verificar se houve erros na Fase 1
+    const phase1Errors = phase1Results.filter(r => !r.success);
+    if (phase1Errors.length > 0) {
+      hasErrors = true;
+      console.log(`${colors.red}⚠️  ${phase1Errors.length} erro(s) na Fase 1. Abortando fases seguintes.${colors.reset}\n`);
+      phase1Errors.forEach(err => {
+        console.log(`${colors.red}   • ${err.scriptName}: ${err.error}${colors.reset}`);
+      });
+      throw new Error(`Erros na Fase 1: ${phase1Errors.map(e => e.scriptName).join(', ')}`);
     }
 
     // ============================================

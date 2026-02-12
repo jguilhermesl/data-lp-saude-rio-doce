@@ -250,6 +250,26 @@ function parseDecimal(value: string): number | null {
 }
 
 /**
+ * Extrai o status do HTML retornado pela API
+ * Exemplo: "<span class=\"btn btn-info btn-sm\"><strong>PRÉ-PAGO</strong></span>" -> "PRÉ-PAGO"
+ */
+function extractStatus(statusHtml: string): string | null {
+  if (!statusHtml || statusHtml.trim() === '') {
+    return null;
+  }
+  
+  // Regex para extrair o texto entre as tags <strong> ou qualquer texto visível
+  const strongMatch = statusHtml.match(/<strong>(.*?)<\/strong>/i);
+  if (strongMatch && strongMatch[1]) {
+    return strongMatch[1].trim();
+  }
+  
+  // Fallback: remover todas as tags HTML e pegar o texto
+  const textOnly = statusHtml.replace(/<[^>]*>/g, '').trim();
+  return textOnly || null;
+}
+
+/**
  * Busca atendimentos de uma página específica da API
  */
 async function fetchAppointmentsPage(page: number, startDate: string, endDate: string): Promise<AppointmentAPIResponse | null> {
@@ -377,6 +397,7 @@ async function importAppointments() {
           const examValue = parseDecimal(appointment.vlr_exames);
           const paidValue = parseDecimal(appointment.vlr_pago);
           const paymentDone = appointment.hid_status === 'F'; // F = Fechado
+          const status = extractStatus(appointment.statusAtend);
 
           // Preparar dados para upsert
           const appointmentData = {
@@ -387,6 +408,7 @@ async function importAppointments() {
             examValue,
             paidValue,
             paymentDone,
+            status,
             examsRaw: appointment.exames || null,
             syncedAt: new Date(),
             rawPayload: appointment,
@@ -509,7 +531,8 @@ async function importAppointments() {
       console.log('');
       page++;
 
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      // Delay otimizado entre requisições (500ms → 100ms)
+      await new Promise((resolve) => setTimeout(resolve, 100));
     }
 
     // Resumo final

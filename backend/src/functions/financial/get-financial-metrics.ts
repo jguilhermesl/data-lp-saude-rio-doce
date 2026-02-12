@@ -1,4 +1,5 @@
 import { handleErrors } from '@/utils/handle-errors';
+import { calculateTotalRevenue } from '@/utils/calculate-revenue';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { startOfMonth, endOfMonth, differenceInMonths, format } from 'date-fns';
@@ -46,6 +47,8 @@ export const getFinancialMetrics = async (req: any, res: any) => {
       ];
     }
 
+    console.log("===> ",startDate, endDate)
+
     // Buscar dados em paralelo
     const [
       appointments,
@@ -53,13 +56,19 @@ export const getFinancialMetrics = async (req: any, res: any) => {
       expenseSummary,
       categoryRanking,
     ] = await Promise.all([
-      // Buscar appointments para calcular faturamento
-      prisma.appointment.aggregate({
+      // Buscar appointments para calcular faturamento (appointmentDate OR createdDate)
+      prisma.appointment.findMany({
         where: {
-          createdDate: { gte: startDate, lte: endDate },
+          OR: [
+            { appointmentDate: { gte: startDate, lte: endDate } },
+            { createdDate: { gte: startDate, lte: endDate } },
+          ],
         },
-        _sum: {
+        select: {
           paidValue: true,
+          status: true,
+          createdDate: true,
+          appointmentDate: true,
         },
       }),
       // Buscar expenses filtradas
@@ -94,8 +103,9 @@ export const getFinancialMetrics = async (req: any, res: any) => {
       }),
     ]);
 
-    // Calcular métricas principais
-    const totalRevenue = Number(appointments._sum.paidValue || 0);
+    // Calcular métricas principais usando o utilitário
+    const totalRevenue = calculateTotalRevenue(appointments, startDate, endDate);
+    
     const totalExpenses = Number(expenseSummary._sum.value || 0);
     const totalProfit = totalRevenue - totalExpenses;
 
@@ -139,12 +149,18 @@ export const getFinancialMetrics = async (req: any, res: any) => {
           const monthEnd = endOfMonth(month);
 
           const [appointmentData, expenseData] = await Promise.all([
-            prisma.appointment.aggregate({
+            prisma.appointment.findMany({
               where: {
-                createdDate: { gte: monthStart, lte: monthEnd },
+                OR: [
+                  { appointmentDate: { gte: monthStart, lte: monthEnd } },
+                  { createdDate: { gte: monthStart, lte: monthEnd } },
+                ],
               },
-              _sum: {
+              select: {
                 paidValue: true,
+                status: true,
+                createdDate: true,
+                appointmentDate: true,
               },
             }),
             prisma.expense.aggregate({
@@ -157,7 +173,9 @@ export const getFinancialMetrics = async (req: any, res: any) => {
             }),
           ]);
 
-          const revenue = Number(appointmentData._sum.paidValue || 0);
+          // Calcular revenue usando o utilitário
+          const revenue = calculateTotalRevenue(appointmentData, monthStart, monthEnd);
+          
           const expenses = Number(expenseData._sum.value || 0);
 
           return {

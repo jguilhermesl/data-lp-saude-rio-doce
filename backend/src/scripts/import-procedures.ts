@@ -61,7 +61,7 @@ const API_CONFIG = {
     'Cookie': 'dotproject=hllhp910t3ar325ms9m3tq7el6; PHPSESSID=kd2rmta1sup8elfvpcsr04nrq4',
   },
   sourceSystem: 's2web',
-  rowsPerPage: 50,
+  rowsPerPage: 300, // Otimizado: 50 → 300 para reduzir número de requisições
 };
 
 /**
@@ -87,7 +87,7 @@ const AMB_API_CONFIG = {
     'Cookie': 'dotproject=hllhp910t3ar325ms9m3tq7el6; PHPSESSID=kd2rmta1sup8elfvpcsr04nrq4',
   },
   sourceSystem: 's2web',
-  rowsPerPage: 100,
+  rowsPerPage: 300, // Otimizado: 100 → 300 para reduzir número de requisições
 };
 
 /**
@@ -329,7 +329,8 @@ async function importMedicosEspecialidadeProcedures(
     console.log('');
     page++;
 
-    await new Promise((resolve) => setTimeout(resolve, 500));
+    // Delay otimizado entre requisições (500ms → 100ms)
+    await new Promise((resolve) => setTimeout(resolve, 100));
   }
 
   return page - 1;
@@ -427,7 +428,8 @@ async function importAMBProcedures(
     console.log('');
     page++;
 
-    await new Promise((resolve) => setTimeout(resolve, 500));
+    // Delay otimizado entre requisições (500ms → 100ms)
+    await new Promise((resolve) => setTimeout(resolve, 100));
   }
 
   return page - 1;

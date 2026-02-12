@@ -17,6 +17,7 @@ interface Appointment {
   paidValue?: number;
   paymentDone: boolean;
   insuranceName?: string;
+  status?: string;
   patient: {
     id: string;
     fullName: string;
