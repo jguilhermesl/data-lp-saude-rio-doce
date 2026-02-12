@@ -6,12 +6,12 @@ import {
   Send,
   CheckCircle,
   XCircle,
-  Calendar,
   Users,
   TrendingUp,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
+import { BirthdaysCard } from '@/components/birthdays-card';
 
 // Mock data types
 interface DispatchData {
@@ -194,31 +194,48 @@ export const AfterSalesTemplate = () => {
 
   return (
     <PrivateLayout
-      title="Métricas de Disparos"
-      description="Acompanhamento e análise dos disparos de comunicação por ciclo"
+      title="Pós Venda"
+      description="Acompanhamento e análise dos disparos de comunicação por ciclo e os aniversariantes do dia"
     >
       <div className="flex flex-col gap-6">
-        {/* Cycle Selection Tabs */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-1">
-          <div className="flex gap-1">
-            {cycleOptions.map((option) => {
-              const isSelected = selectedCycle === option.value;
+        {/* Birthdays Card - Quick Access */}
+        <BirthdaysCard />
 
-              return (
-                <button
-                  key={option.value}
-                  onClick={() => setSelectedCycle(option.value)}
-                  className={cn(
-                    'flex-1 px-4 py-2.5 rounded-md text-sm font-medium transition-all',
-                    isSelected
-                      ? 'bg-blue-500 text-white shadow-sm'
-                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50',
-                  )}
-                >
-                  {option.label}
-                </button>
-              );
-            })}
+        {/* Cycle Selection Tabs - EM DESENVOLVIMENTO */}
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden opacity-60 pointer-events-none">
+          <div className="bg-yellow-50 border-b border-yellow-200 px-4 py-3">
+            <div className="flex items-center gap-2">
+              <div className="flex-shrink-0">
+                <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <p className="text-sm font-medium text-yellow-800">
+                🚧 Seção em Desenvolvimento - Funcionalidade ainda não disponível
+              </p>
+            </div>
+          </div>
+          <div className="p-1">
+            <div className="flex gap-1">
+              {cycleOptions.map((option) => {
+                const isSelected = selectedCycle === option.value;
+
+                return (
+                  <button
+                    key={option.value}
+                    disabled
+                    className={cn(
+                      'flex-1 px-4 py-2.5 rounded-md text-sm font-medium transition-all cursor-not-allowed',
+                      isSelected
+                        ? 'bg-blue-500 text-white shadow-sm'
+                        : 'text-gray-600 bg-gray-50',
+                    )}
+                  >
+                    {option.label}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
 

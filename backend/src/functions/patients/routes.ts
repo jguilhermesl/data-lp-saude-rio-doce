@@ -3,6 +3,7 @@ import { authMiddleware } from '@/middlewares/auth-middleware';
 import { getPatientById } from './get-patient-by-id';
 import { getPatientsMetrics } from './get-patients-metrics';
 import { getInactivePatients } from './get-inactive-patients';
+import { getBirthdays } from './get-birthdays';
 
 const routerPatients = Router();
 
@@ -12,6 +13,7 @@ routerPatients.use(authMiddleware);
 // Rotas de listagem e detalhes
 routerPatients.get('/patients/metrics/summary', (req, res) => getPatientsMetrics(req, res));
 routerPatients.get('/patients/inactive', (req, res) => getInactivePatients(req, res));
+routerPatients.get('/patients/birthdays', (req, res) => getBirthdays(req, res));
 routerPatients.get('/patients/:id', (req, res) => getPatientById(req, res));
 
 export { routerPatients };
