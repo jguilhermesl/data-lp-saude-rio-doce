@@ -1,7 +1,7 @@
 
 import { handleErrors } from "@/utils/handle-errors";
 import { z } from "zod";
-import { compare } from "bcrypt";
+import { compare } from "bcryptjs";
 import { generateJwt } from "@/utils/generate-jwt";
 import { UserDAO } from "@/DAO/user";
 
