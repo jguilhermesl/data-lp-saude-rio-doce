@@ -5,7 +5,8 @@ import { PrivateLayout } from '@/components/private-layout';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
 import { useFinancialMetrics } from '@/hooks/useFinancialMetrics';
-import { FinancialTableFilters } from './financial-table-filters';
+import { FinancialDateFilters } from './financial-date-filters';
+import { FinancialSearchFilters } from './financial-search-filters';
 import { FinancialMetricCards } from './financial-metric-cards';
 import { FinancialCategoryRanking } from './financial-category-ranking';
 import { FinancialChart } from './financial-chart';
@@ -104,15 +105,11 @@ export const FinancialTemplate = () => {
       }
     >
       <div className="flex flex-col gap-6">
-        {/* Filtros e Botões de Exportação */}
+        {/* Filtros de Data e Botões de Exportação */}
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-4">
-          <FinancialTableFilters 
+          <FinancialDateFilters 
             dateRange={dateRange}
             onDateRangeChange={setDateRange}
-            category={category}
-            onCategoryChange={setCategory}
-            search={search}
-            onSearchChange={setSearch}
           />
           <FinancialExportButtons
             data={data}
@@ -151,6 +148,14 @@ export const FinancialTemplate = () => {
             />
           )}
         </div>
+
+        {/* Filtros de Busca e Categoria logo acima da tabela de despesas */}
+        <FinancialSearchFilters 
+          category={category}
+          onCategoryChange={setCategory}
+          search={search}
+          onSearchChange={setSearch}
+        />
 
         {/* Lista de Despesas */}
         <ExpensesList
