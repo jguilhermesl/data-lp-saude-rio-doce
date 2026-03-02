@@ -11,7 +11,7 @@ export const BirthdaysCard = () => {
   const [selectedDate, setSelectedDate] = useState<string>(
     format(new Date(), 'yyyy-MM-dd')
   );
-  const [isExpanded, setIsExpanded] = useState<boolean>(true);
+  const [isExpanded, setIsExpanded] = useState<boolean>(false);
   const router = useRouter();
 
   const { data, isLoading, error } = useBirthdays(selectedDate);

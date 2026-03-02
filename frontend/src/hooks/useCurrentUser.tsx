@@ -7,6 +7,7 @@ import { meProfile } from '@/services/api/auth';
 interface UserContextType {
   user?: any;
   isAdmin: boolean;
+  isPosVenda: boolean;
   isLoading: boolean;
 }
 
@@ -28,10 +29,11 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
 
   console.log(userProfile);
   const isAdmin = userProfile?.data?.role === 'ADMIN';
+  const isPosVenda = userProfile?.data?.role === 'POS_VENDA';
 
   return (
     <UserContext.Provider
-      value={{ user: userProfile?.data, isAdmin, isLoading: isPending }}
+      value={{ user: userProfile?.data, isAdmin, isPosVenda, isLoading: isPending }}
     >
       {children}
     </UserContext.Provider>

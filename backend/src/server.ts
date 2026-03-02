@@ -18,6 +18,7 @@ import { routerFinancial } from "./functions/financial/routes";
 import { routerDoctors } from "./functions/doctors/routes";
 import { routerProcedures } from "./functions/procedures/routes";
 import { routerSync } from "./functions/sync/routes";
+import { routerDispatches } from "./functions/dispatches/routes";
 
 const PORT = env.PORT;
 const app = express();
@@ -28,8 +29,9 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Registrar todas as rotas
-app.use(routerSync);
 app.use(routerAuth);
+app.use(routerDispatches);
+app.use(routerSync);
 app.use(routerUsers);
 app.use(routerAppointments);
 app.use(routerDoctors);

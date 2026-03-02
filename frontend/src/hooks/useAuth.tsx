@@ -38,7 +38,13 @@ export const useAuth = () => {
             role: data.role,
           });
 
-          window.location.reload();
+          // Redireciona baseado no role do usuário
+          if (data.role === 'POS_VENDA') {
+            router.push('/after-sales');
+          } else {
+            window.location.reload();
+          }
+          
           await invalidateQueries();
         }
       } catch (error: any) {
@@ -46,7 +52,7 @@ export const useAuth = () => {
         throw new Error(error?.message);
       }
     },
-    []
+    [router]
   );
 
   const handleSignOut = useCallback(async () => {

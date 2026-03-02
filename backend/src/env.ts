@@ -4,7 +4,10 @@ import { z } from "zod";
 const envSchema = z.object({
   NODE_ENV: z.enum(['dev', 'test', 'production']).default('dev'),
   PORT: z.coerce.number().default(3333),
-  JWT_SECRET: z.string()
+  JWT_SECRET: z.string(),
+  // WhatsApp Business API (opcional)
+  WHATSAPP_ACCESS_TOKEN: z.string().optional(),
+  WHATSAPP_PHONE_NUMBER_ID: z.string().optional(),
 });
 
 const _env = envSchema.safeParse(process.env);

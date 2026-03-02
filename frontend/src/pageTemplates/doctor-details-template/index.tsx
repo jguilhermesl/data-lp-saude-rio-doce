@@ -1,13 +1,13 @@
 'use client';
 import { PrivateLayout } from '@/components/private-layout';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, DollarSign, Users, TrendingUp, Calendar, Filter } from 'lucide-react';
+import { ArrowLeft, DollarSign, Users, TrendingUp, Filter } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { api } from '@/lib/axios';
 import { format, startOfMonth, endOfMonth } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
 import { AppointmentsList } from './appointments-list';
+import { DoctorDetailExportButtons } from './doctor-detail-export-buttons';
 
 interface DoctorDetailsTemplateProps {
   doctorId: string;
@@ -150,8 +150,8 @@ export const DoctorDetailsTemplate = ({
       description={`${doctor.crm || 'CRM não informado'} - ${doctor.specialties.map(s => s.name).join(', ')}`}
     >
       <div className="flex flex-col gap-6">
-        {/* Header with Back Button and Filters */}
-        <div className="flex items-center justify-between">
+        {/* Header with Back Button, Filters and Export Buttons */}
+        <div className="flex items-center justify-between flex-wrap gap-4">
           <Button
             variant="ghost"
             onClick={() => router.push('/doctors')}
@@ -160,13 +160,24 @@ export const DoctorDetailsTemplate = ({
             Voltar
           </Button>
           
-          <Button
-            variant="outline"
-            onClick={() => setShowFilters(!showFilters)}
-          >
-            <Filter className="mr-2 h-4 w-4" />
-            Filtros
-          </Button>
+          <div className="flex items-center gap-3">
+            <Button
+              variant="outline"
+              onClick={() => setShowFilters(!showFilters)}
+            >
+              <Filter className="mr-2 h-4 w-4" />
+              Filtros
+            </Button>
+
+            <DoctorDetailExportButtons
+              doctor={doctor}
+              metrics={metrics}
+              appointments={appointments}
+              proceduresByRevenue={proceduresByRevenue}
+              period={data.period}
+              isLoading={loading}
+            />
+          </div>
         </div>
 
         {/* Filters Section */}

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { PrivateLayout } from '@/components/private-layout';
 import {
   Send,
@@ -8,172 +8,69 @@ import {
   XCircle,
   Users,
   TrendingUp,
+  Loader2,
+  AlertCircle,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { BirthdaysCard } from '@/components/birthdays-card';
-
-// Mock data types
-interface DispatchData {
-  id: string;
-  specialty: string;
-  date: string;
-  peopleCount: number;
-  successRate: number;
-  status: 'success' | 'error';
-}
-
-// Mock data for different cycles
-const mockData: Record<number, DispatchData[]> = {
-  1: [
-    {
-      id: '1',
-      specialty: 'Cardiologia',
-      date: '2026-01-15',
-      peopleCount: 45,
-      successRate: 92.5,
-      status: 'success',
-    },
-    {
-      id: '2',
-      specialty: 'Ortopedia',
-      date: '2026-01-20',
-      peopleCount: 32,
-      successRate: 87.8,
-      status: 'success',
-    },
-    {
-      id: '3',
-      specialty: 'Pediatria',
-      date: '2026-01-25',
-      peopleCount: 28,
-      successRate: 65.2,
-      status: 'error',
-    },
-  ],
-  3: [
-    {
-      id: '4',
-      specialty: 'Cardiologia',
-      date: '2025-12-10',
-      peopleCount: 120,
-      successRate: 89.3,
-      status: 'success',
-    },
-    {
-      id: '5',
-      specialty: 'Dermatologia',
-      date: '2025-11-28',
-      peopleCount: 85,
-      successRate: 94.1,
-      status: 'success',
-    },
-    {
-      id: '6',
-      specialty: 'Ortopedia',
-      date: '2025-12-15',
-      peopleCount: 95,
-      successRate: 82.6,
-      status: 'success',
-    },
-    {
-      id: '7',
-      specialty: 'Neurologia',
-      date: '2026-01-05',
-      peopleCount: 42,
-      successRate: 58.3,
-      status: 'error',
-    },
-    {
-      id: '8',
-      specialty: 'Pediatria',
-      date: '2025-12-20',
-      peopleCount: 67,
-      successRate: 91.2,
-      status: 'success',
-    },
-  ],
-  6: [
-    {
-      id: '9',
-      specialty: 'Cardiologia',
-      date: '2025-08-15',
-      peopleCount: 230,
-      successRate: 91.7,
-      status: 'success',
-    },
-    {
-      id: '10',
-      specialty: 'Ortopedia',
-      date: '2025-09-10',
-      peopleCount: 189,
-      successRate: 88.4,
-      status: 'success',
-    },
-    {
-      id: '11',
-      specialty: 'Dermatologia',
-      date: '2025-10-05',
-      peopleCount: 156,
-      successRate: 93.8,
-      status: 'success',
-    },
-    {
-      id: '12',
-      specialty: 'Pediatria',
-      date: '2025-11-12',
-      peopleCount: 142,
-      successRate: 85.9,
-      status: 'success',
-    },
-    {
-      id: '13',
-      specialty: 'Neurologia',
-      date: '2025-09-25',
-      peopleCount: 98,
-      successRate: 72.4,
-      status: 'error',
-    },
-    {
-      id: '14',
-      specialty: 'Ginecologia',
-      date: '2025-10-18',
-      peopleCount: 175,
-      successRate: 89.7,
-      status: 'success',
-    },
-    {
-      id: '15',
-      specialty: 'Urologia',
-      date: '2025-11-30',
-      peopleCount: 88,
-      successRate: 94.3,
-      status: 'success',
-    },
-  ],
-};
+import { useDispatchReports, type CadenceType } from '@/hooks/useDispatchReports';
 
 export const AfterSalesTemplate = () => {
-  const [selectedCycle, setSelectedCycle] = useState<1 | 3 | 6>(1);
+  const [selectedCycle, setSelectedCycle] = useState<1 | 2 | 3>(1);
   const router = useRouter();
 
-  const currentData = mockData[selectedCycle];
+  // Mapeia o ciclo selecionado para a cadência correspondente
+  const cadenceFilter = useMemo<CadenceType>(() => {
+    const cadenceMap: Record<1 | 2 | 3, CadenceType> = {
+      1: 'THIRTY_DAYS',
+      2: 'SIXTY_DAYS',
+      3: 'NINETY_DAYS',
+    };
+    return cadenceMap[selectedCycle];
+  }, [selectedCycle]);
 
-  // Calculate metrics based on selected cycle
-  const totalDispatches = currentData.length;
-  const totalPeople = currentData.reduce(
-    (acc, item) => acc + item.peopleCount,
-    0,
-  );
-  const averageSuccessRate =
-    currentData.reduce((acc, item) => acc + item.successRate, 0) /
-    currentData.length;
-  const successfulDispatches = currentData.filter(
-    (item) => item.status === 'success',
-  ).length;
+  // Busca relatórios da API filtrando pela cadência
+  const { data: dispatches, isLoading, error } = useDispatchReports({ cadence: cadenceFilter });
+
+  // Calcula métricas
+  const metrics = useMemo(() => {
+    if (!dispatches || dispatches.length === 0) {
+      return {
+        totalDispatches: 0,
+        totalPeople: 0,
+        averageSuccessRate: 0,
+        successfulDispatches: 0,
+      };
+    }
+
+    const totalDispatches = dispatches.length;
+    const totalPeople = dispatches.reduce(
+      (acc, dispatch) => acc + dispatch.totalPatients,
+      0
+    );
+
+    const successfulDispatches = dispatches.filter(
+      (dispatch) => dispatch.status === 'COMPLETED'
+    ).length;
+
+    // Calcula taxa média de sucesso
+    const avgSuccess = dispatches.reduce((acc, dispatch) => {
+      const rate = dispatch.totalPatients > 0
+        ? (dispatch.successCount / dispatch.totalPatients) * 100
+        : 0;
+      return acc + rate;
+    }, 0) / totalDispatches;
+
+    return {
+      totalDispatches,
+      totalPeople,
+      averageSuccessRate: avgSuccess,
+      successfulDispatches,
+    };
+  }, [dispatches]);
 
   const handleDispatchClick = (dispatchId: string) => {
-    // Redirect to detailed view
     router.push(`/after-sales/${dispatchId}`);
   };
 
@@ -186,10 +83,36 @@ export const AfterSalesTemplate = () => {
     });
   };
 
+  const getCadenceLabel = (cadence: string) => {
+    const labels: Record<string, string> = {
+      THIRTY_DAYS: '30 dias',
+      SIXTY_DAYS: '60 dias',
+      NINETY_DAYS: '90 dias',
+    };
+    return labels[cadence] || cadence;
+  };
+
+  const getStatusInfo = (status: string, successRate: number) => {
+    if (status === 'COMPLETED') {
+      if (successRate >= 80) {
+        return { icon: CheckCircle, color: 'text-green-500', label: 'Sucesso', bgColor: 'text-green-700' };
+      } else if (successRate >= 60) {
+        return { icon: AlertCircle, color: 'text-yellow-500', label: 'Parcial', bgColor: 'text-yellow-700' };
+      } else {
+        return { icon: XCircle, color: 'text-red-500', label: 'Baixo', bgColor: 'text-red-700' };
+      }
+    } else if (status === 'IN_PROGRESS') {
+      return { icon: Loader2, color: 'text-blue-500', label: 'Em Andamento', bgColor: 'text-blue-700' };
+    } else if (status === 'FAILED') {
+      return { icon: XCircle, color: 'text-red-500', label: 'Falhou', bgColor: 'text-red-700' };
+    }
+    return { icon: Send, color: 'text-gray-500', label: 'Pendente', bgColor: 'text-gray-700' };
+  };
+
   const cycleOptions = [
     { value: 1 as const, label: '1 Mês' },
+    { value: 2 as const, label: '2 Meses' },
     { value: 3 as const, label: '3 Meses' },
-    { value: 6 as const, label: '6 Meses' },
   ];
 
   return (
@@ -198,23 +121,10 @@ export const AfterSalesTemplate = () => {
       description="Acompanhamento e análise dos disparos de comunicação por ciclo e os aniversariantes do dia"
     >
       <div className="flex flex-col gap-6">
-        {/* Birthdays Card - Quick Access */}
-        <BirthdaysCard />
+      
 
-        {/* Cycle Selection Tabs - EM DESENVOLVIMENTO */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden opacity-60 pointer-events-none">
-          <div className="bg-yellow-50 border-b border-yellow-200 px-4 py-3">
-            <div className="flex items-center gap-2">
-              <div className="flex-shrink-0">
-                <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                </svg>
-              </div>
-              <p className="text-sm font-medium text-yellow-800">
-                🚧 Seção em Desenvolvimento - Funcionalidade ainda não disponível
-              </p>
-            </div>
-          </div>
+        {/* Cycle Selection Tabs */}
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
           <div className="p-1">
             <div className="flex gap-1">
               {cycleOptions.map((option) => {
@@ -223,12 +133,12 @@ export const AfterSalesTemplate = () => {
                 return (
                   <button
                     key={option.value}
-                    disabled
+                    onClick={() => setSelectedCycle(option.value)}
                     className={cn(
-                      'flex-1 px-4 py-2.5 rounded-md text-sm font-medium transition-all cursor-not-allowed',
+                      'flex-1 px-4 py-2.5 rounded-md text-sm font-medium transition-all',
                       isSelected
                         ? 'bg-blue-500 text-white shadow-sm'
-                        : 'text-gray-600 bg-gray-50',
+                        : 'text-gray-600 bg-gray-50 hover:bg-gray-100',
                     )}
                   >
                     {option.label}
@@ -248,7 +158,7 @@ export const AfterSalesTemplate = () => {
                   Total de Disparos
                 </p>
                 <p className="text-2xl font-bold text-gray-900 mt-2">
-                  {totalDispatches}
+                  {isLoading ? '...' : metrics.totalDispatches}
                 </p>
               </div>
               <div className="p-3 bg-blue-50 rounded-lg">
@@ -264,7 +174,7 @@ export const AfterSalesTemplate = () => {
                   Total de Pessoas
                 </p>
                 <p className="text-2xl font-bold text-gray-900 mt-2">
-                  {totalPeople}
+                  {isLoading ? '...' : metrics.totalPeople}
                 </p>
               </div>
               <div className="p-3 bg-green-50 rounded-lg">
@@ -280,7 +190,7 @@ export const AfterSalesTemplate = () => {
                   Taxa Média de Sucesso
                 </p>
                 <p className="text-2xl font-bold text-gray-900 mt-2">
-                  {averageSuccessRate.toFixed(1)}%
+                  {isLoading ? '...' : `${metrics.averageSuccessRate.toFixed(1)}%`}
                 </p>
               </div>
               <div className="p-3 bg-purple-50 rounded-lg">
@@ -296,7 +206,7 @@ export const AfterSalesTemplate = () => {
                   Disparos Bem-Sucedidos
                 </p>
                 <p className="text-2xl font-bold text-gray-900 mt-2">
-                  {successfulDispatches}/{totalDispatches}
+                  {isLoading ? '...' : `${metrics.successfulDispatches}/${metrics.totalDispatches}`}
                 </p>
               </div>
               <div className="p-3 bg-emerald-50 rounded-lg">
@@ -318,103 +228,130 @@ export const AfterSalesTemplate = () => {
             </p>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-200">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Data
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Pessoas
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Taxa de Sucesso
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {currentData.map((dispatch) => (
-                  <tr
-                    key={dispatch.id}
-                    onClick={() => handleDispatchClick(dispatch.id)}
-                    className="hover:bg-gray-50 cursor-pointer transition-colors"
-                  >
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-600">
-                        {formatDate(dispatch.date)}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <Users className="w-4 h-4 text-gray-400 mr-2" />
-                        <span className="text-sm font-medium text-gray-900">
-                          {dispatch.peopleCount}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <div className="w-full max-w-[120px]">
-                          <div className="flex items-center justify-between mb-1">
-                            <span className="text-sm font-medium text-gray-900">
-                              {dispatch.successRate.toFixed(1)}%
-                            </span>
-                          </div>
-                          <div className="w-full bg-gray-200 rounded-full h-2">
-                            <div
-                              className={cn(
-                                'h-2 rounded-full transition-all',
-                                dispatch.successRate >= 80
-                                  ? 'bg-green-500'
-                                  : dispatch.successRate >= 60
-                                    ? 'bg-yellow-500'
-                                    : 'bg-red-500',
-                              )}
-                              style={{ width: `${dispatch.successRate}%` }}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {dispatch.status === 'success' ? (
-                        <div className="flex items-center">
-                          <CheckCircle className="w-5 h-5 text-green-500 mr-2" />
-                          <span className="text-sm font-medium text-green-700">
-                            Sucesso
-                          </span>
-                        </div>
-                      ) : (
-                        <div className="flex items-center">
-                          <XCircle className="w-5 h-5 text-red-500 mr-2" />
-                          <span className="text-sm font-medium text-red-700">
-                            Erro
-                          </span>
-                        </div>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {currentData.length === 0 && (
+          {isLoading ? (
+            <div className="flex items-center justify-center h-64 p-6">
+              <div className="text-center">
+                <Loader2 className="w-12 h-12 text-blue-500 animate-spin mx-auto mb-4" />
+                <p className="text-gray-600">Carregando disparos...</p>
+              </div>
+            </div>
+          ) : error ? (
+            <div className="flex items-center justify-center h-64 p-6">
+              <div className="text-center">
+                <AlertCircle className="w-16 h-16 text-red-400 mx-auto mb-4" />
+                <p className="text-gray-600 mb-2">Erro ao carregar disparos</p>
+                <p className="text-gray-400 text-sm">
+                  Tente novamente mais tarde
+                </p>
+              </div>
+            </div>
+          ) : !dispatches || dispatches.length === 0 ? (
             <div className="flex items-center justify-center h-64 p-6">
               <div className="text-center">
                 <Send className="w-16 h-16 text-gray-300 mx-auto mb-4" />
                 <p className="text-gray-600 mb-2">Nenhum disparo encontrado</p>
                 <p className="text-gray-400 text-sm">
-                  Não há dados para o ciclo selecionado
+                  Não há dados para o período selecionado
                 </p>
               </div>
             </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50 border-b border-gray-200">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Data
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Cadência
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Pessoas
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Taxa de Sucesso
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Status
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {dispatches.map((dispatch) => {
+                    const successRate = dispatch.totalPatients > 0
+                      ? (dispatch.successCount / dispatch.totalPatients) * 100
+                      : 0;
+                    const statusInfo = getStatusInfo(dispatch.status, successRate);
+                    const StatusIcon = statusInfo.icon;
+
+                    return (
+                      <tr
+                        key={dispatch.id}
+                        onClick={() => handleDispatchClick(dispatch.id)}
+                        className="hover:bg-gray-50 cursor-pointer transition-colors"
+                      >
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-600">
+                            {formatDate(dispatch.date)}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm font-medium text-gray-900">
+                            {getCadenceLabel(dispatch.cadence)}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center">
+                            <Users className="w-4 h-4 text-gray-400 mr-2" />
+                            <span className="text-sm font-medium text-gray-900">
+                              {dispatch.totalPatients}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center">
+                            <div className="w-full max-w-[120px]">
+                              <div className="flex items-center justify-between mb-1">
+                                <span className="text-sm font-medium text-gray-900">
+                                  {successRate.toFixed(1)}%
+                                </span>
+                              </div>
+                              <div className="w-full bg-gray-200 rounded-full h-2">
+                                <div
+                                  className={cn(
+                                    'h-2 rounded-full transition-all',
+                                    successRate >= 80
+                                      ? 'bg-green-500'
+                                      : successRate >= 60
+                                        ? 'bg-yellow-500'
+                                        : 'bg-red-500',
+                                  )}
+                                  style={{ width: `${successRate}%` }}
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center">
+                            <StatusIcon className={cn('w-5 h-5 mr-2', statusInfo.color, dispatch.status === 'IN_PROGRESS' && 'animate-spin')} />
+                            <span className={cn('text-sm font-medium', statusInfo.bgColor)}>
+                              {statusInfo.label}
+                            </span>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
+
+          {/* Birthdays Card - Quick Access */}
+        <BirthdaysCard />
       </div>
     </PrivateLayout>
   );

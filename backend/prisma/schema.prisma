@@ -18,6 +18,28 @@ enum UserRole {
   ADMIN
   MANAGER
   VIEWER
+  POS_VENDA
+}
+
+enum CadenceType {
+  THIRTY_DAYS
+  SIXTY_DAYS
+  NINETY_DAYS
+}
+
+enum DispatchStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+}
+
+enum MessageStatus {
+  PENDING
+  SENT
+  DELIVERED
+  FAILED
+  READ
 }
 
 
@@ -47,7 +69,8 @@ model Patient {
   updatedAt  DateTime  @updatedAt
 
   // Relações
-  appointments Appointment[]
+  appointments        Appointment[]
+  messageDispatchItems MessageDispatchItem[]
 
   @@unique([externalId, sourceSystem]) // garante upsert idempotente
   @@index([cpf])
@@ -280,4 +303,82 @@ model Expense {
   @@index([date])
   @@index([category])
   @@map("expenses")
+}
+
+// ============================================
+// SISTEMA DE DISPAROS DE MENSAGENS
+// ============================================
+
+/// Disparo em massa de mensagens
+model MessageDispatch {
+  id          String         @id @default(uuid())
+  
+  // Tipo de cadência
+  cadence     CadenceType    // 30, 60 ou 90 dias
+  
+  // Status do disparo
+  status      DispatchStatus @default(PENDING)
+  
+  // Contadores
+  totalPatients Int          @default(0) // Total de pacientes no lote
+  successCount  Int          @default(0) // Mensagens enviadas com sucesso
+  errorCount    Int          @default(0) // Mensagens com erro
+  
+  // Timestamps
+  date        DateTime       @db.Date // Data do disparo
+  startedAt   DateTime?      // Quando começou o processamento
+  completedAt DateTime?      // Quando terminou
+  
+  // Campos técnicos
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  
+  // Relações
+  items       MessageDispatchItem[]
+  
+  @@index([cadence])
+  @@index([date])
+  @@index([status])
+  @@map("message_dispatches")
+}
+
+/// Item individual de um disparo (uma mensagem)
+model MessageDispatchItem {
+  id              String        @id @default(uuid())
+  
+  // Relação com o disparo
+  dispatchId      String
+  dispatch        MessageDispatch @relation(fields: [dispatchId], references: [id], onDelete: Cascade)
+  
+  // Relação com o paciente
+  patientId       String
+  patient         Patient       @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  
+  // Dados da mensagem
+  phoneNumber     String        // Número para onde foi enviado
+  messageTemplate String        // Nome do template usado
+  
+  // Status do envio
+  status          MessageStatus @default(PENDING)
+  
+  // IDs e tracking do WhatsApp
+  whatsappMessageId String?     // ID da mensagem retornado pela API
+  
+  // Mensagens de erro
+  errorMessage    String?       @db.Text
+  
+  // Timestamps
+  sentAt          DateTime?     // Quando foi enviada
+  deliveredAt     DateTime?     // Quando foi entregue
+  readAt          DateTime?     // Quando foi lida
+  
+  // Campos técnicos
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  
+  @@index([dispatchId])
+  @@index([patientId])
+  @@index([status])
+  @@index([phoneNumber])
+  @@map("message_dispatch_items")
 }

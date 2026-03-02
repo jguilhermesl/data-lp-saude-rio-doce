@@ -28,7 +28,7 @@ export const PrivateLayout = ({
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const pathname = usePathname();
   const { handleSignOut } = useAuth();
-  const { isAdmin, user } = useCurrentUser();
+  const { isAdmin, isPosVenda, user } = useCurrentUser();
 
   // Função para extrair primeiro e último nome
   const getFirstAndLastName = (fullName: string | undefined) => {
@@ -38,10 +38,21 @@ export const PrivateLayout = ({
     return `${names[0]} ${names[names.length - 1]}`;
   };
 
-  // Filtra os itens da sidebar baseado se o usuário é admin
-  const visibleItems = SIDEBAR_ITEMS.filter(
-    (item) => !item.adminOnly || isAdmin,
-  );
+  // Filtra os itens da sidebar baseado nas permissões do usuário
+  const visibleItems = SIDEBAR_ITEMS.filter((item) => {
+    // Se adminOnly está definido, verifica se o usuário é admin
+    if (item.adminOnly && !isAdmin) {
+      return false;
+    }
+    
+    // Se allowedRoles está definido, verifica se o role do usuário está na lista
+    if (item.allowedRoles && user?.role) {
+      return item.allowedRoles.includes(user.role);
+    }
+    
+    // Se não tem restrições específicas, mostra o item
+    return true;
+  });
 
   const handleLogout = () => {
     handleSignOut();
@@ -253,14 +264,21 @@ export const PrivateLayout = ({
           </div>
           <div className="flex items-center gap-2 md:gap-4">
             {actionsComponent}
-            {isAdmin && (
+            {(isAdmin || isPosVenda) && (
               <div className="flex items-center gap-2">
                 <span className="text-sm text-gray-700 font-medium hidden sm:inline">
                   {getFirstAndLastName(user?.name)}
                 </span>
-                <span className="px-2 md:px-3 py-1 bg-green-100 text-green-700 text-xs font-medium rounded-full">
-                  Admin
-                </span>
+                {isAdmin && (
+                  <span className="px-2 md:px-3 py-1 bg-green-100 text-green-700 text-xs font-medium rounded-full">
+                    Admin
+                  </span>
+                )}
+                {isPosVenda && (
+                  <span className="px-2 md:px-3 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded-full">
+                    Pós-Venda
+                  </span>
+                )}
               </div>
             )}
           </div>
