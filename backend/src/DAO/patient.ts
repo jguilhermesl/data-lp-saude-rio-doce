@@ -273,6 +273,133 @@ export class PatientDAO {
     }
   }
 
+  /**
+   * Busca pacientes que completam exatamente X dias de inatividade hoje
+   * Exemplo: Se days = 30 e hoje é 2 de março, busca pacientes cuja última consulta
+   * foi em 2 de fevereiro ou 1 de fevereiro (±1 dia de tolerância)
+   */
+  async getPatientsByExactInactiveDays(
+    days: number,
+    doctorId?: string,
+    procedureId?: string
+  ) {
+    try {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      // Calcula a data alvo (hoje - X dias)
+      const targetDate = new Date(today);
+      targetDate.setDate(targetDate.getDate() - days);
+
+      // Define range de ±1 dia para tolerância
+      const targetDateStart = new Date(targetDate);
+      targetDateStart.setDate(targetDateStart.getDate() - 1);
+      targetDateStart.setHours(0, 0, 0, 0);
+
+      const targetDateEnd = new Date(targetDate);
+      targetDateEnd.setDate(targetDateEnd.getDate() + 1);
+      targetDateEnd.setHours(23, 59, 59, 999);
+
+      console.log(`📅 Searching patients with last appointment between ${targetDateStart.toISOString()} and ${targetDateEnd.toISOString()}`);
+
+      // Buscar todos os pacientes com appointments
+      const allPatients = await prisma.patient.findMany({
+        where: {
+          appointments: {
+            some: {},
+          },
+        },
+        include: {
+          appointments: {
+            orderBy: { appointmentDate: 'desc' },
+            take: 1,
+            include: {
+              doctor: {
+                select: {
+                  id: true,
+                  name: true,
+                },
+              },
+              specialty: {
+                select: {
+                  id: true,
+                  name: true,
+                },
+              },
+              appointmentProcedures: {
+                include: {
+                  procedure: {
+                    select: {
+                      id: true,
+                      name: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      });
+
+      // Filtra pacientes cuja última consulta está no range alvo
+      return allPatients
+        .filter((patient) => {
+          const lastAppointment = patient.appointments[0];
+          
+          // Verifica se última consulta está no range de datas
+          if (!lastAppointment || 
+              lastAppointment.appointmentDate < targetDateStart || 
+              lastAppointment.appointmentDate > targetDateEnd) {
+            return false;
+          }
+
+          // Filtrar por médico se especificado
+          if (doctorId && lastAppointment.doctorId !== doctorId) {
+            return false;
+          }
+
+          // Filtrar por procedimento se especificado
+          if (procedureId) {
+            const hasProcedure = lastAppointment.appointmentProcedures.some(
+              (ap) => ap.procedure.id === procedureId
+            );
+            if (!hasProcedure) {
+              return false;
+            }
+          }
+
+          return true;
+        })
+        .map((patient) => {
+          const lastAppointment = patient.appointments[0];
+          const daysSinceLastAppointment = Math.floor(
+            (today.getTime() - lastAppointment.appointmentDate.getTime()) /
+              (1000 * 60 * 60 * 24)
+          );
+
+          return {
+            id: patient.id,
+            fullName: patient.fullName,
+            cpf: patient.cpf,
+            homePhone: patient.homePhone,
+            mobilePhone: patient.mobilePhone,
+            lastAppointmentDate: lastAppointment.appointmentDate,
+            daysSinceLastAppointment,
+            lastDoctorId: lastAppointment.doctor?.id || null,
+            lastDoctorName: lastAppointment.doctor?.name || null,
+            lastSpecialtyName: lastAppointment.specialty?.name || null,
+            lastProcedures: lastAppointment.appointmentProcedures.map((ap) => ({
+              id: ap.procedure.id,
+              name: ap.procedure.name,
+            })),
+          };
+        });
+    } catch (error) {
+      console.error('Error in PatientDAO.getPatientsByExactInactiveDays:', error);
+      throw error;
+    }
+  }
+
 }
 
 export const patientDAO = new PatientDAO();

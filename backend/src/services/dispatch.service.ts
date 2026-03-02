@@ -80,10 +80,9 @@ export class DispatchService {
       );
     }
 
-    // 3. Busca pacientes inativos
-    console.log(`📋 Fetching inactive patients (${days} days without appointment)...`);
-    const monthsInactive = Math.floor(days / 30);
-    const inactivePatients = await patientDAO.getPatientsAtRisk(monthsInactive);
+    // 3. Busca pacientes que completam exatamente X dias de inatividade hoje
+    console.log(`📋 Fetching patients completing exactly ${days} days of inactivity today...`);
+    const inactivePatients = await patientDAO.getPatientsByExactInactiveDays(days);
 
     // Filtra pacientes com telefone válido
     const patientsWithPhone = inactivePatients.filter(

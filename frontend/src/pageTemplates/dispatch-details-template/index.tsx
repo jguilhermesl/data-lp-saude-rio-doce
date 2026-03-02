@@ -12,6 +12,7 @@ import {
   ArrowLeft,
   Loader2,
   MessageSquare,
+  LucideIcon,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
@@ -57,7 +58,7 @@ export const DispatchDetailsTemplate = ({ dispatchId }: DispatchDetailsTemplateP
   };
 
   const getStatusInfo = (status: string) => {
-    const statusMap: Record<string, { icon: any; color: string; label: string; bgColor: string }> = {
+    const statusMap: Record<string, { icon: LucideIcon; color: string; label: string; bgColor: string }> = {
       SENT: { icon: CheckCircle, color: 'text-green-500', label: 'Enviado', bgColor: 'bg-green-50' },
       DELIVERED: { icon: CheckCircle, color: 'text-green-600', label: 'Entregue', bgColor: 'bg-green-50' },
       READ: { icon: CheckCircle, color: 'text-blue-500', label: 'Lido', bgColor: 'bg-blue-50' },
@@ -68,7 +69,7 @@ export const DispatchDetailsTemplate = ({ dispatchId }: DispatchDetailsTemplateP
   };
 
   const getDispatchStatusInfo = (status: string) => {
-    const statusMap: Record<string, { icon: any; color: string; label: string; bgColor: string }> = {
+    const statusMap: Record<string, { icon: LucideIcon; color: string; label: string; bgColor: string }> = {
       COMPLETED: { icon: CheckCircle, color: 'text-green-500', label: 'Concluído', bgColor: 'bg-green-100 text-green-800' },
       IN_PROGRESS: { icon: Loader2, color: 'text-blue-500', label: 'Em Andamento', bgColor: 'bg-blue-100 text-blue-800' },
       FAILED: { icon: XCircle, color: 'text-red-500', label: 'Falhou', bgColor: 'bg-red-100 text-red-800' },
@@ -253,12 +254,16 @@ export const DispatchDetailsTemplate = ({ dispatchId }: DispatchDetailsTemplateP
                     const ItemStatusIcon = itemStatusInfo.icon;
 
                     return (
-                      <tr key={item.id} className="hover:bg-gray-50 transition-colors">
+                      <tr 
+                        key={item.id} 
+                        onClick={() => router.push(`/patient/${item.patient.id}`)}
+                        className="hover:bg-blue-50 transition-colors cursor-pointer"
+                      >
                         <td className="px-6 py-4">
                           <div className="flex items-center">
                             <User className="w-4 h-4 text-gray-400 mr-2 flex-shrink-0" />
                             <div>
-                              <p className="text-sm font-medium text-gray-900">
+                              <p className="text-sm font-medium text-gray-900 group-hover:text-blue-600">
                                 {item.patient.fullName}
                               </p>
                               {item.errorMessage && (
