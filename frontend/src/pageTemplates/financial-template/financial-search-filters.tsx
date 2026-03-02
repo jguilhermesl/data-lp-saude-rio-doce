@@ -32,6 +32,7 @@ const CATEGORIES = [
   'CONSULTORIA',
   'LIXO',
   'TARIFA',
+  'PRÓ LABORE',
   'OUTROS',
 ];
 
