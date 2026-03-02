@@ -65,6 +65,7 @@ export const ExpenseFormDialog = ({
     'CONSULTORIA',
     'LIXO',
     'TARIFA',
+    'PRÓ LABORE',
     'OUTROS',
   ];
 

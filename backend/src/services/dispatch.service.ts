@@ -16,6 +16,47 @@ interface ExecuteDispatchParams {
 
 export class DispatchService {
   /**
+   * Formata o nome do cliente para envio no WhatsApp
+   * Retorna apenas o primeiro nome com primeira letra maiúscula
+   * Exemplo: "JOÃO DA SILVA" -> "João"
+   */
+  private formatClientName(fullName: string): string {
+    if (!fullName || fullName.trim() === '') {
+      return 'Cliente';
+    }
+
+    // Pega apenas o primeiro nome
+    const firstName = fullName.trim().split(' ')[0];
+    
+    // Primeira letra maiúscula, resto minúscula
+    const formatted = firstName.charAt(0).toUpperCase() + firstName.slice(1).toLowerCase();
+    
+    return formatted;
+  }
+
+  /**
+   * Formata o número de telefone para o formato internacional
+   * Remove caracteres especiais e adiciona código do país Brasil (55)
+   * Exemplo: "81984459408" -> "5581984459408"
+   */
+  private formatPhoneNumber(phoneNumber: string): string {
+    // Remove todos os caracteres não numéricos
+    let cleaned = phoneNumber.replace(/\D/g, '');
+
+    // Se começar com 0, remove
+    if (cleaned.startsWith('0')) {
+      cleaned = cleaned.substring(1);
+    }
+
+    // Se não tiver código do país (55 para Brasil), adiciona
+    if (!cleaned.startsWith('55') && cleaned.length <= 11) {
+      cleaned = '55' + cleaned;
+    }
+
+    return cleaned;
+  }
+
+  /**
    * Executa um disparo completo
    */
   async executeDispatch(params: ExecuteDispatchParams) {
@@ -119,11 +160,9 @@ export class DispatchService {
       await processQueueWithDelay(
         pendingItems,
         async (item, index) => {
-          console.log(item)
           return await this.processDispatchItem(
             item.id,
-            // item.phoneNumber,
-            "5581991693706",
+            item.phoneNumber,
             item.messageTemplate,
             (item as any).patient.fullName // Passa o nome do paciente
           );
@@ -161,14 +200,20 @@ export class DispatchService {
     templateName: string,
     clientName: string
   ): Promise<void> {
-    console.log(`📱 Sending message to ${phoneNumber} (${clientName})...`);
+    // Formata o nome do cliente (apenas primeiro nome, capitalizado)
+    const formattedName = this.formatClientName(clientName);
+    
+    // Formata o número de telefone para o formato internacional (adiciona código do país 55)
+    const formattedPhone = this.formatPhoneNumber(phoneNumber);
+    
+    console.log(`📱 Sending message to ${formattedPhone} (original: ${phoneNumber}, client: ${clientName} -> ${formattedName})...`);
 
     try {
       // Tenta enviar com retry
       const result = await retryWithBackoff(
         async () => {
           return await whatsappService.sendTemplateMessage({
-            to: phoneNumber,
+            to: formattedPhone, // Usa o telefone formatado
             templateName,
             components: [
               {
@@ -177,7 +222,7 @@ export class DispatchService {
                   {
                     type: 'text',
                     parameter_name: "client_name",
-                    text: clientName,
+                    text: formattedName, // Usa o nome formatado
                   },
                 ],
               },
@@ -196,7 +241,7 @@ export class DispatchService {
           sentAt: new Date(),
         });
 
-        console.log(`✅ Message sent successfully to ${phoneNumber}`);
+        console.log(`✅ Message sent successfully to ${formattedPhone}`);
       } else {
         // Atualiza item como falho
         await dispatchDAO.updateItem(itemId, {
@@ -204,7 +249,7 @@ export class DispatchService {
           errorMessage: result.error,
         });
 
-        console.error(`❌ Failed to send message to ${phoneNumber}: ${result.error}`);
+        console.error(`❌ Failed to send message to ${formattedPhone}: ${result.error}`);
       }
     } catch (error: any) {
       // Atualiza item como falho
@@ -213,7 +258,7 @@ export class DispatchService {
         errorMessage: error.message || 'Erro desconhecido',
       });
 
-      console.error(`❌ Error sending message to ${phoneNumber}:`, error);
+      console.error(`❌ Error sending message to ${formattedPhone}:`, error);
     }
   }
 
