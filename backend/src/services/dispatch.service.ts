@@ -154,7 +154,7 @@ export class DispatchService {
       console.log(`📦 Processing ${pendingItems.length} pending items...`);
 
       // Processa cada item com delay de 2 minutos (120.000ms)
-      const DELAY_MS = 2 * 60 * 1000; // 2 minutos
+      const DELAY_MS = 1 * 60 * 1000; // 2 minutos
 
       await processQueueWithDelay(
         pendingItems,
