@@ -5,6 +5,7 @@ import { dispatch60Days } from './dispatch-60-days';
 import { dispatch90Days } from './dispatch-90-days';
 import { getDispatchReports } from './get-dispatch-reports';
 import { getDispatchById } from './get-dispatch-by-id';
+import { updateItemSatisfaction } from './update-item-satisfaction';
 
 const routerDispatches = Router();
 
@@ -18,5 +19,8 @@ routerDispatches.post('/dispatches/90-days', (req, res) => dispatch90Days(req, r
 // Rotas de relatórios (GET)
 routerDispatches.get('/dispatches/reports', (req, res) => getDispatchReports(req, res));
 routerDispatches.get('/dispatches/:id', (req, res) => getDispatchById(req, res));
+
+// Rotas de atualização (PATCH)
+routerDispatches.patch('/dispatches/items/:itemId/satisfaction', (req, res) => updateItemSatisfaction(req, res));
 
 export { routerDispatches };

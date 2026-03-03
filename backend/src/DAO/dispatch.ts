@@ -1,5 +1,5 @@
 import { prisma } from '../lib/prisma';
-import { Prisma, MessageDispatch, MessageDispatchItem, CadenceType, DispatchStatus, MessageStatus } from '@prisma/client';
+import { Prisma, MessageDispatch, MessageDispatchItem, CadenceType, DispatchStatus, MessageStatus, SatisfactionLevel } from '@prisma/client';
 
 /**
  * DispatchDAO - Data Access Object para operações relacionadas a disparos de mensagens
@@ -275,6 +275,24 @@ export class DispatchDAO {
       });
     } catch (error) {
       console.error('Error in DispatchDAO.findPendingItems:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Atualiza o nível de satisfação de um item de disparo
+   */
+  async updateItemSatisfaction(
+    itemId: string,
+    satisfactionLevel: SatisfactionLevel
+  ): Promise<MessageDispatchItem> {
+    try {
+      return await prisma.messageDispatchItem.update({
+        where: { id: itemId },
+        data: { satisfactionLevel },
+      });
+    } catch (error) {
+      console.error('Error in DispatchDAO.updateItemSatisfaction:', error);
       throw error;
     }
   }

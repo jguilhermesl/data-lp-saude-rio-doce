@@ -1,9 +1,11 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/axios";
 
 export type CadenceType = "THIRTY_DAYS" | "SIXTY_DAYS" | "NINETY_DAYS";
 
 export type DispatchStatus = "PENDING" | "IN_PROGRESS" | "COMPLETED" | "FAILED";
+
+export type SatisfactionLevel = "NEUTRAL" | "SATISFIED" | "UNSATISFIED";
 
 interface MessageDispatch {
   id: string;
@@ -71,6 +73,7 @@ export function useDispatchById(id: string) {
             phoneNumber: string;
             messageTemplate: string;
             status: string;
+            satisfactionLevel: SatisfactionLevel;
             whatsappMessageId: string | null;
             errorMessage: string | null;
             sentAt: string | null;
@@ -90,5 +93,23 @@ export function useDispatchById(id: string) {
     },
     enabled: !!id,
     staleTime: 1000 * 60 * 2, // 2 minutos
+  });
+}
+
+// Hook para atualizar o nível de satisfação de um item de disparo
+export function useUpdateItemSatisfaction(dispatchId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ itemId, satisfactionLevel }: { itemId: string; satisfactionLevel: SatisfactionLevel }) => {
+      const response = await api.patch(`/dispatches/items/${itemId}/satisfaction`, {
+        satisfactionLevel,
+      });
+      return response.data;
+    },
+    onSuccess: () => {
+      // Invalida o cache do disparo para recarregar os dados atualizados
+      queryClient.invalidateQueries({ queryKey: ["dispatch-details", dispatchId] });
+    },
   });
 }

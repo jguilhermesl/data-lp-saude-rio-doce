@@ -42,6 +42,12 @@ enum MessageStatus {
   READ
 }
 
+enum SatisfactionLevel {
+  NEUTRAL
+  SATISFIED
+  UNSATISFIED
+}
+
 
 // ============================================
 // ENTIDADES PRINCIPAIS
@@ -360,6 +366,9 @@ model MessageDispatchItem {
   
   // Status do envio
   status          MessageStatus @default(PENDING)
+  
+  // Nível de satisfação do cliente
+  satisfactionLevel SatisfactionLevel @default(NEUTRAL)
   
   // IDs e tracking do WhatsApp
   whatsappMessageId String?     // ID da mensagem retornado pela API

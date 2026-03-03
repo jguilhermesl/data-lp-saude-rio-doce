@@ -13,10 +13,18 @@ import {
   Loader2,
   MessageSquare,
   LucideIcon,
+  SmilePlus,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
-import { useDispatchById } from '@/hooks/useDispatchReports';
+import { useDispatchById, useUpdateItemSatisfaction, SatisfactionLevel } from '@/hooks/useDispatchReports';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 interface DispatchDetailsTemplateProps {
   dispatchId: string;
@@ -25,6 +33,7 @@ interface DispatchDetailsTemplateProps {
 export const DispatchDetailsTemplate = ({ dispatchId }: DispatchDetailsTemplateProps) => {
   const router = useRouter();
   const { data: dispatch, isLoading, error } = useDispatchById(dispatchId);
+  const updateSatisfaction = useUpdateItemSatisfaction(dispatchId);
 
   const formatDate = (dateString: string | null) => {
     if (!dateString) return '-';
@@ -76,6 +85,28 @@ export const DispatchDetailsTemplate = ({ dispatchId }: DispatchDetailsTemplateP
       PENDING: { icon: Clock, color: 'text-gray-500', label: 'Pendente', bgColor: 'bg-gray-100 text-gray-800' },
     };
     return statusMap[status] || statusMap.PENDING;
+  };
+
+  const getSatisfactionLabel = (level: SatisfactionLevel) => {
+    const labels: Record<SatisfactionLevel, string> = {
+      NEUTRAL: 'Neutro',
+      SATISFIED: 'Satisfeito',
+      UNSATISFIED: 'Insatisfeito',
+    };
+    return labels[level];
+  };
+
+  const handleSatisfactionChange = (itemId: string, satisfactionLevel: SatisfactionLevel) => {
+    updateSatisfaction.mutate({ itemId, satisfactionLevel });
+  };
+
+  const getSatisfactionColor = (level: SatisfactionLevel) => {
+    const colors: Record<SatisfactionLevel, string> = {
+      NEUTRAL: 'bg-gray-100 text-gray-700 border-gray-300',
+      SATISFIED: 'bg-green-100 text-green-700 border-green-300',
+      UNSATISFIED: 'bg-red-100 text-red-700 border-red-300',
+    };
+    return colors[level];
   };
 
   if (isLoading) {
@@ -243,6 +274,9 @@ export const DispatchDetailsTemplate = ({ dispatchId }: DispatchDetailsTemplateP
                     Status
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Nível de Satisfação
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Enviado em
                   </th>
                 </tr>
@@ -292,6 +326,39 @@ export const DispatchDetailsTemplate = ({ dispatchId }: DispatchDetailsTemplateP
                             {itemStatusInfo.label}
                           </div>
                         </td>
+                        <td className="px-6 py-4 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                          <div className="flex items-center gap-2">
+                            <SmilePlus className="w-4 h-4 text-gray-400" />
+                            <Select
+                              value={item.satisfactionLevel}
+                              onValueChange={(value) => handleSatisfactionChange(item.id, value as SatisfactionLevel)}
+                            >
+                              <SelectTrigger className={cn("w-[140px] h-8 text-xs border-2", getSatisfactionColor(item.satisfactionLevel))}>
+                                <SelectValue placeholder="Selecione" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="NEUTRAL" className="text-xs">
+                                  <span className="flex items-center gap-2">
+                                    <span className="text-gray-600">😐</span>
+                                    Neutro
+                                  </span>
+                                </SelectItem>
+                                <SelectItem value="SATISFIED" className="text-xs">
+                                  <span className="flex items-center gap-2">
+                                    <span className="text-green-600">😊</span>
+                                    Satisfeito
+                                  </span>
+                                </SelectItem>
+                                <SelectItem value="UNSATISFIED" className="text-xs">
+                                  <span className="flex items-center gap-2">
+                                    <span className="text-red-600">😞</span>
+                                    Insatisfeito
+                                  </span>
+                                </SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                           {formatDateTime(item.sentAt)}
                         </td>
@@ -300,7 +367,7 @@ export const DispatchDetailsTemplate = ({ dispatchId }: DispatchDetailsTemplateP
                   })
                 ) : (
                   <tr>
-                    <td colSpan={5} className="px-6 py-12 text-center">
+                    <td colSpan={6} className="px-6 py-12 text-center">
                       <AlertCircle className="w-12 h-12 text-gray-300 mx-auto mb-3" />
                       <p className="text-gray-500">Nenhum paciente encontrado neste disparo</p>
                     </td>
