@@ -19,7 +19,18 @@ export const BirthdaysCard = () => {
   const handleWhatsAppClick = (phone: string) => {
     // Limpar telefone e abrir WhatsApp
     const cleanPhone = phone.replace(/\D/g, '');
-    const message = encodeURIComponent('Olá! Feliz aniversário! 🎉🎂');
+    
+    // Construir mensagem formatada para WhatsApp
+    const message = 
+      '*** FELIZ ANIVERSARIO! ***' + '%0A%0A' +
+      'A equipe da LP SAUDE RIO DOCE deseja a voce um novo ano de vida com muita saude, felicidade e muitas conquistas! E para celebrar essa data especial, preparamos um presente para voce:' + '%0A%0A' +
+      '*> 15% de desconto em consultas e exames laboratoriais*' + '%0A%0A' +
+      '[v] Valido por 30 dias a partir da data do seu aniversario.' + '%0A%0A' +
+      'Cuidar da sua saude e o melhor presente que voce pode se dar — e nos estamos aqui para cuidar de voce!' + '%0A%0A' +
+      '> Agende pelo WhatsApp: (81)98936-0600' + '%0A%0A' +
+      'Com carinho,' + '%0A' +
+      '*LP SAUDE RIO DOCE*';
+    
     window.open(
       `https://wa.me/55${cleanPhone}?text=${message}`,
       '_blank'
