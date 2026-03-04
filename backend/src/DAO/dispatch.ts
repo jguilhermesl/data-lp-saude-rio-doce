@@ -296,6 +296,24 @@ export class DispatchDAO {
       throw error;
     }
   }
+
+  /**
+   * Atualiza o status de resposta do lead de um item de disparo
+   */
+  async updateItemLeadStatus(
+    itemId: string,
+    leadStatus: string
+  ): Promise<MessageDispatchItem> {
+    try {
+      return await prisma.messageDispatchItem.update({
+        where: { id: itemId },
+        data: { leadStatus: leadStatus as any },
+      });
+    } catch (error) {
+      console.error('Error in DispatchDAO.updateItemLeadStatus:', error);
+      throw error;
+    }
+  }
 }
 
 export const dispatchDAO = new DispatchDAO();

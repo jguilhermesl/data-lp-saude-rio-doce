@@ -48,6 +48,14 @@ enum SatisfactionLevel {
   UNSATISFIED
 }
 
+enum LeadResponseStatus {
+  NO_RESPONSE
+  RESPONDED
+  INTERESTED
+  NOT_INTERESTED
+  SCHEDULED
+}
+
 
 // ============================================
 // ENTIDADES PRINCIPAIS
@@ -369,6 +377,9 @@ model MessageDispatchItem {
   
   // Nível de satisfação do cliente
   satisfactionLevel SatisfactionLevel @default(NEUTRAL)
+  
+  // Status da resposta do lead
+  leadStatus        LeadResponseStatus @default(NO_RESPONSE)
   
   // IDs e tracking do WhatsApp
   whatsappMessageId String?     // ID da mensagem retornado pela API

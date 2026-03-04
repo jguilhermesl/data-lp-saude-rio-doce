@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
-import { useDispatchById, useUpdateItemSatisfaction, SatisfactionLevel } from '@/hooks/useDispatchReports';
+import { useDispatchById, useUpdateItemSatisfaction, useUpdateItemLeadStatus, SatisfactionLevel, LeadResponseStatus } from '@/hooks/useDispatchReports';
 import {
   Select,
   SelectContent,
@@ -34,6 +34,7 @@ export const DispatchDetailsTemplate = ({ dispatchId }: DispatchDetailsTemplateP
   const router = useRouter();
   const { data: dispatch, isLoading, error } = useDispatchById(dispatchId);
   const updateSatisfaction = useUpdateItemSatisfaction(dispatchId);
+  const updateLeadStatus = useUpdateItemLeadStatus(dispatchId);
 
   const formatDate = (dateString: string | null) => {
     if (!dateString) return '-';
@@ -107,6 +108,32 @@ export const DispatchDetailsTemplate = ({ dispatchId }: DispatchDetailsTemplateP
       UNSATISFIED: 'bg-red-100 text-red-700 border-red-300',
     };
     return colors[level];
+  };
+
+  const getLeadStatusLabel = (status: LeadResponseStatus) => {
+    const labels: Record<LeadResponseStatus, string> = {
+      NO_RESPONSE: 'Não Respondeu',
+      RESPONDED: 'Respondeu',
+      INTERESTED: 'Demonstrou Interesse',
+      NOT_INTERESTED: 'Sem Interesse',
+      SCHEDULED: 'Agendou Consulta',
+    };
+    return labels[status];
+  };
+
+  const getLeadStatusColor = (status: LeadResponseStatus) => {
+    const colors: Record<LeadResponseStatus, string> = {
+      NO_RESPONSE: 'bg-gray-100 text-gray-700 border-gray-300',
+      RESPONDED: 'bg-green-100 text-green-700 border-green-300',
+      INTERESTED: 'bg-blue-100 text-blue-700 border-blue-300',
+      NOT_INTERESTED: 'bg-red-100 text-red-700 border-red-300',
+      SCHEDULED: 'bg-emerald-100 text-emerald-700 border-emerald-300',
+    };
+    return colors[status];
+  };
+
+  const handleLeadStatusChange = (itemId: string, leadStatus: LeadResponseStatus) => {
+    updateLeadStatus.mutate({ itemId, leadStatus });
   };
 
   if (isLoading) {
@@ -274,6 +301,9 @@ export const DispatchDetailsTemplate = ({ dispatchId }: DispatchDetailsTemplateP
                     Status
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Status do Lead
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Nível de Satisfação
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -327,6 +357,33 @@ export const DispatchDetailsTemplate = ({ dispatchId }: DispatchDetailsTemplateP
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                          <Select
+                            value={item.leadStatus}
+                            onValueChange={(value) => handleLeadStatusChange(item.id, value as LeadResponseStatus)}
+                          >
+                            <SelectTrigger className={cn("w-[180px] h-8 text-xs border-2", getLeadStatusColor(item.leadStatus))}>
+                              <SelectValue placeholder="Selecione" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="NO_RESPONSE" className="text-xs">
+                                ⚪ Não Respondeu
+                              </SelectItem>
+                              <SelectItem value="RESPONDED" className="text-xs">
+                                🟢 Respondeu
+                              </SelectItem>
+                              <SelectItem value="INTERESTED" className="text-xs">
+                                🔵 Demonstrou Interesse
+                              </SelectItem>
+                              <SelectItem value="NOT_INTERESTED" className="text-xs">
+                                🔴 Sem Interesse
+                              </SelectItem>
+                              <SelectItem value="SCHEDULED" className="text-xs">
+                                💚 Agendou Consulta
+                              </SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                           <div className="flex items-center gap-2">
                             <SmilePlus className="w-4 h-4 text-gray-400" />
                             <Select
@@ -367,7 +424,7 @@ export const DispatchDetailsTemplate = ({ dispatchId }: DispatchDetailsTemplateP
                   })
                 ) : (
                   <tr>
-                    <td colSpan={6} className="px-6 py-12 text-center">
+                    <td colSpan={7} className="px-6 py-12 text-center">
                       <AlertCircle className="w-12 h-12 text-gray-300 mx-auto mb-3" />
                       <p className="text-gray-500">Nenhum paciente encontrado neste disparo</p>
                     </td>
