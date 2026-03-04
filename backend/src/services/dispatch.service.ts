@@ -289,7 +289,7 @@ export class DispatchService {
           },
         },
         orderBy: {
-          status: 'asc',
+          createdAt: 'asc',
         },
       },
     });

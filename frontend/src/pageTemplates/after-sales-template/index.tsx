@@ -75,11 +75,19 @@ export const AfterSalesTemplate = () => {
   };
 
   const formatDate = (dateString: string) => {
+    // Parse the date string - handles both ISO format and date-only strings
     const date = new Date(dateString);
+    
+    // Check if date is valid
+    if (isNaN(date.getTime())) {
+      return 'Data inválida';
+    }
+    
     return date.toLocaleDateString('pt-BR', {
       day: '2-digit',
       month: '2-digit',
       year: 'numeric',
+      timeZone: 'UTC', // Use UTC to avoid timezone conversion issues
     });
   };
 

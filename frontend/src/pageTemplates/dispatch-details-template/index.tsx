@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { PrivateLayout } from '@/components/private-layout';
 import {
   CheckCircle,
@@ -25,6 +26,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { DispatchNotesModal } from '@/components/dispatch-notes-modal';
 
 interface DispatchDetailsTemplateProps {
   dispatchId: string;
@@ -35,14 +37,28 @@ export const DispatchDetailsTemplate = ({ dispatchId }: DispatchDetailsTemplateP
   const { data: dispatch, isLoading, error } = useDispatchById(dispatchId);
   const updateSatisfaction = useUpdateItemSatisfaction(dispatchId);
   const updateLeadStatus = useUpdateItemLeadStatus(dispatchId);
+  const [notesModalState, setNotesModalState] = useState<{ isOpen: boolean; itemId: string; patientName: string }>({
+    isOpen: false,
+    itemId: '',
+    patientName: '',
+  });
 
   const formatDate = (dateString: string | null) => {
     if (!dateString) return '-';
+    
+    // Parse the date string - handles both ISO format and date-only strings
     const date = new Date(dateString);
+    
+    // Check if date is valid
+    if (isNaN(date.getTime())) {
+      return 'Data inválida';
+    }
+    
     return date.toLocaleDateString('pt-BR', {
       day: '2-digit',
       month: '2-digit',
       year: 'numeric',
+      timeZone: 'UTC', // Use UTC to avoid timezone conversion issues
     });
   };
 
@@ -55,6 +71,7 @@ export const DispatchDetailsTemplate = ({ dispatchId }: DispatchDetailsTemplateP
       year: 'numeric',
       hour: '2-digit',
       minute: '2-digit',
+      timeZone: 'America/Recife',
     });
   };
 
@@ -288,26 +305,29 @@ export const DispatchDetailsTemplate = ({ dispatchId }: DispatchDetailsTemplateP
             <table className="w-full">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Paciente
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Telefone
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Template
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Status
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Status do Lead
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Nível de Satisfação
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Enviado em
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Notas
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Ações
                   </th>
                 </tr>
               </thead>
@@ -319,49 +339,42 @@ export const DispatchDetailsTemplate = ({ dispatchId }: DispatchDetailsTemplateP
 
                     return (
                       <tr 
-                        key={item.id} 
-                        onClick={() => router.push(`/patient/${item.patient.id}`)}
-                        className="hover:bg-blue-50 transition-colors cursor-pointer"
+                        key={item.id}
+                        className="hover:bg-gray-50 transition-colors"
                       >
-                        <td className="px-6 py-4">
+                        <td className="px-4 py-3">
                           <div className="flex items-center">
                             <User className="w-4 h-4 text-gray-400 mr-2 flex-shrink-0" />
-                            <div>
-                              <p className="text-sm font-medium text-gray-900 group-hover:text-blue-600">
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium text-gray-900 truncate">
                                 {item.patient.fullName}
                               </p>
                               {item.errorMessage && (
-                                <p className="text-xs text-red-600 mt-1">
+                                <p className="text-xs text-red-600 mt-1 truncate">
                                   {item.errorMessage}
                                 </p>
                               )}
                             </div>
                           </div>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
+                        <td className="px-4 py-3 whitespace-nowrap">
                           <div className="flex items-center text-sm text-gray-600">
-                            <Phone className="w-4 h-4 text-gray-400 mr-2" />
-                            {item.phoneNumber}
+                            <Phone className="w-4 h-4 text-gray-400 mr-2 flex-shrink-0" />
+                            <span className="truncate">{item.phoneNumber}</span>
                           </div>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center text-sm text-gray-600">
-                            <MessageSquare className="w-4 h-4 text-gray-400 mr-2" />
-                            {item.messageTemplate}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
+                        <td className="px-4 py-3 whitespace-nowrap">
                           <div className={cn('inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium', itemStatusInfo.bgColor)}>
-                            <ItemStatusIcon className={cn('w-3 h-3 mr-1', itemStatusInfo.color)} />
-                            {itemStatusInfo.label}
+                            <ItemStatusIcon className={cn('w-3 h-3 mr-1 flex-shrink-0', itemStatusInfo.color)} />
+                            <span className="truncate">{itemStatusInfo.label}</span>
                           </div>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                        <td className="px-4 py-3 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                           <Select
                             value={item.leadStatus}
                             onValueChange={(value) => handleLeadStatusChange(item.id, value as LeadResponseStatus)}
                           >
-                            <SelectTrigger className={cn("w-[180px] h-8 text-xs border-2", getLeadStatusColor(item.leadStatus))}>
+                            <SelectTrigger className={cn("w-full max-w-[160px] h-8 text-xs border-2", getLeadStatusColor(item.leadStatus))}>
                               <SelectValue placeholder="Selecione" />
                             </SelectTrigger>
                             <SelectContent>
@@ -383,48 +396,54 @@ export const DispatchDetailsTemplate = ({ dispatchId }: DispatchDetailsTemplateP
                             </SelectContent>
                           </Select>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
-                          <div className="flex items-center gap-2">
-                            <SmilePlus className="w-4 h-4 text-gray-400" />
-                            <Select
-                              value={item.satisfactionLevel}
-                              onValueChange={(value) => handleSatisfactionChange(item.id, value as SatisfactionLevel)}
-                            >
-                              <SelectTrigger className={cn("w-[140px] h-8 text-xs border-2", getSatisfactionColor(item.satisfactionLevel))}>
-                                <SelectValue placeholder="Selecione" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="NEUTRAL" className="text-xs">
-                                  <span className="flex items-center gap-2">
-                                    <span className="text-gray-600">😐</span>
-                                    Neutro
-                                  </span>
-                                </SelectItem>
-                                <SelectItem value="SATISFIED" className="text-xs">
-                                  <span className="flex items-center gap-2">
-                                    <span className="text-green-600">😊</span>
-                                    Satisfeito
-                                  </span>
-                                </SelectItem>
-                                <SelectItem value="UNSATISFIED" className="text-xs">
-                                  <span className="flex items-center gap-2">
-                                    <span className="text-red-600">😞</span>
-                                    Insatisfeito
-                                  </span>
-                                </SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
+                        <td className="px-4 py-3 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                          <Select
+                            value={item.satisfactionLevel}
+                            onValueChange={(value) => handleSatisfactionChange(item.id, value as SatisfactionLevel)}
+                          >
+                            <SelectTrigger className={cn("w-full max-w-[120px] h-8 text-xs border-2", getSatisfactionColor(item.satisfactionLevel))}>
+                              <SelectValue placeholder="Selecione" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="NEUTRAL" className="text-xs">
+                                😐 Neutro
+                              </SelectItem>
+                              <SelectItem value="SATISFIED" className="text-xs">
+                                😊 Satisfeito
+                              </SelectItem>
+                              <SelectItem value="UNSATISFIED" className="text-xs">
+                                😞 Insatisfeito
+                              </SelectItem>
+                            </SelectContent>
+                          </Select>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                        <td className="px-4 py-3 whitespace-nowrap text-xs text-gray-600">
                           {formatDateTime(item.sentAt)}
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          <button
+                            className="text-blue-600 hover:text-blue-800 text-xs font-medium flex items-center gap-1"
+                            onClick={() => setNotesModalState({ isOpen: true, itemId: item.id, patientName: item.patient.fullName })}
+                          >
+                            <MessageSquare className="w-4 h-4" />
+                            Ver
+                          </button>
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          <button
+                            className="text-gray-600 hover:text-blue-600 text-xs font-medium flex items-center gap-1 hover:underline"
+                            onClick={() => router.push(`/patient/${item.patient.id}`)}
+                          >
+                            <User className="w-4 h-4" />
+                            Detalhes
+                          </button>
                         </td>
                       </tr>
                     );
                   })
                 ) : (
                   <tr>
-                    <td colSpan={7} className="px-6 py-12 text-center">
+                    <td colSpan={8} className="px-6 py-12 text-center">
                       <AlertCircle className="w-12 h-12 text-gray-300 mx-auto mb-3" />
                       <p className="text-gray-500">Nenhum paciente encontrado neste disparo</p>
                     </td>
@@ -434,6 +453,14 @@ export const DispatchDetailsTemplate = ({ dispatchId }: DispatchDetailsTemplateP
             </table>
           </div>
         </div>
+
+        {/* Notes Modal */}
+        <DispatchNotesModal
+          itemId={notesModalState.itemId}
+          patientName={notesModalState.patientName}
+          isOpen={notesModalState.isOpen}
+          onClose={() => setNotesModalState({ isOpen: false, itemId: '', patientName: '' })}
+        />
       </div>
     </PrivateLayout>
   );

@@ -314,6 +314,71 @@ export class DispatchDAO {
       throw error;
     }
   }
+
+  /**
+   * Cria uma nota para um item de disparo
+   */
+  async createNote(data: {
+    dispatchItemId: string;
+    userId: string;
+    note: string;
+  }) {
+    try {
+      return await prisma.dispatchItemNote.create({
+        data,
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+            },
+          },
+        },
+      });
+    } catch (error) {
+      console.error('Error in DispatchDAO.createNote:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Busca todas as notas de um item de disparo
+   */
+  async getNotesByItemId(dispatchItemId: string) {
+    try {
+      return await prisma.dispatchItemNote.findMany({
+        where: { dispatchItemId },
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+            },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+    } catch (error) {
+      console.error('Error in DispatchDAO.getNotesByItemId:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Deleta uma nota
+   */
+  async deleteNote(noteId: string) {
+    try {
+      return await prisma.dispatchItemNote.delete({
+        where: { id: noteId },
+      });
+    } catch (error) {
+      console.error('Error in DispatchDAO.deleteNote:', error);
+      throw error;
+    }
+  }
 }
 
 export const dispatchDAO = new DispatchDAO();

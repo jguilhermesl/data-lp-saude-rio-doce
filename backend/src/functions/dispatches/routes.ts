@@ -7,10 +7,14 @@ import { getDispatchReports } from './get-dispatch-reports';
 import { getDispatchById } from './get-dispatch-by-id';
 import { updateItemSatisfaction } from './update-item-satisfaction';
 import { updateItemLeadStatus } from './update-item-lead-status';
+import { createNote } from './create-note';
+import { getNotes } from './get-notes';
+import { deleteNote } from './delete-note';
 
 const routerDispatches = Router();
 
 // Todas as rotas de dispatches requerem autenticação
+routerDispatches.use(authMiddleware);
 
 // Rotas de disparo (POST)
 routerDispatches.post('/dispatches/30-days', (req, res) => dispatch30Days(req, res));
@@ -24,5 +28,10 @@ routerDispatches.get('/dispatches/:id', (req, res) => getDispatchById(req, res))
 // Rotas de atualização (PATCH)
 routerDispatches.patch('/dispatches/items/:itemId/satisfaction', (req, res) => updateItemSatisfaction(req, res));
 routerDispatches.patch('/dispatches/items/:itemId/lead-status', (req, res) => updateItemLeadStatus(req, res));
+
+// Rotas de notas
+routerDispatches.get('/dispatches/items/:itemId/notes', (req, res) => getNotes(req, res));
+routerDispatches.post('/dispatches/items/:itemId/notes', (req, res) => createNote(req, res));
+routerDispatches.delete('/dispatches/notes/:noteId', (req, res) => deleteNote(req, res));
 
 export { routerDispatches };

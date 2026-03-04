@@ -247,7 +247,8 @@ model User {
   updatedAt DateTime @updatedAt
 
   // Relações
-  appointments Appointment[]
+  appointments      Appointment[]
+  dispatchItemNotes DispatchItemNote[]
 
   @@index([email])
   @@map("users")
@@ -396,9 +397,36 @@ model MessageDispatchItem {
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
   
+  // Relações
+  notes           DispatchItemNote[]
+  
   @@index([dispatchId])
   @@index([patientId])
   @@index([status])
   @@index([phoneNumber])
   @@map("message_dispatch_items")
+}
+
+/// Notas de acompanhamento de items de disparo
+model DispatchItemNote {
+  id              String              @id @default(uuid())
+  
+  // Relação com o item de disparo
+  dispatchItemId  String
+  dispatchItem    MessageDispatchItem @relation(fields: [dispatchItemId], references: [id], onDelete: Cascade)
+  
+  // Relação com o usuário que criou a nota
+  userId          String
+  user            User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Conteúdo da nota
+  note            String              @db.Text
+  
+  // Campos técnicos
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  
+  @@index([dispatchItemId])
+  @@index([userId])
+  @@map("dispatch_item_notes")
 }
