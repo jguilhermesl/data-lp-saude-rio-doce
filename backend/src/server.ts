@@ -21,7 +21,7 @@ import { routerSync } from "./functions/sync/routes";
 import { routerDispatches } from "./functions/dispatches/routes";
 
 const PORT = env.PORT;
-const app = express();
+const app = express()
 
 app.use(cors());
 app.use(corsMiddleware);
