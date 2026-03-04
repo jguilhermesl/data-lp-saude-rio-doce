@@ -314,14 +314,23 @@ async function fetchAppointmentsPage(page: number, startDate: string, endDate: s
 }
 
 /**
- * Script principal de importação de atendimentos
+ * Parâmetros opcionais para importação
  */
-async function importAppointments() {
+interface ImportAppointmentsOptions {
+  startDate?: string; // formato: dd/mm/yyyy
+  endDate?: string;   // formato: dd/mm/yyyy
+}
+
+/**
+ * Script principal de importação de atendimentos
+ * @param options - Parâmetros opcionais (startDate, endDate)
+ */
+export async function importAppointments(options?: ImportAppointmentsOptions) {
   console.log('🚀 Iniciando importação de atendimentos...\n');
 
-  // IMPORTANTE: Defina o período de datas para importação
-  const START_DATE = '01/01/2024'; // dd/mm/yyyy
-  const END_DATE = '31/12/2026';   // dd/mm/yyyy
+  // IMPORTANTE: Use parâmetros fornecidos ou valores padrão
+  const START_DATE = options?.startDate || '01/01/2024'; // dd/mm/yyyy
+  const END_DATE = options?.endDate || '31/12/2026';     // dd/mm/yyyy
   
   console.log(`📅 Período: ${START_DATE} até ${END_DATE}\n`);
 
@@ -593,13 +602,15 @@ async function importAppointments() {
   }
 }
 
-// Executar o script
-importAppointments()
-  .then(() => {
-    console.log('🎉 Script finalizado com sucesso!');
-    process.exit(0);
-  })
-  .catch((error) => {
-    console.error('💥 Script finalizado com erro:', error);
-    process.exit(1);
-  });
+// Executar o script apenas se for chamado diretamente
+if (require.main === module) {
+  importAppointments()
+    .then(() => {
+      console.log('🎉 Script finalizado com sucesso!');
+      process.exit(0);
+    })
+    .catch((error) => {
+      console.error('💥 Script finalizado com erro:', error);
+      process.exit(1);
+    });
+}

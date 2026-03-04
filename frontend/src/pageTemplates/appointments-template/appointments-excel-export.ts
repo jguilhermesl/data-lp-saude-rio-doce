@@ -12,12 +12,11 @@ export const exportAppointmentsToExcel = (appointments: Appointment[]) => {
     'CPF Paciente': appointment.patient?.cpf || 'N/A',
     'Médico': appointment.doctor?.name || 'N/A',
     'CRM': appointment.doctor?.crm || 'N/A',
-    'Especialidade': appointment.specialty?.name || 'N/A',
+    'Procedimentos': appointment.examsRaw || 'N/A',
     'Convênio': appointment.insuranceName || 'Particular',
     'Valor Exame': appointment.examValue ? Number(appointment.examValue.toFixed(2)) : 0,
     'Valor Pago': appointment.paidValue ? Number(appointment.paidValue.toFixed(2)) : 0,
-    'Pagamento': appointment.paymentDone ? 'Pago' : 'Pendente',
-    'Procedimentos': appointment.procedures.map(p => p.name).join(', ') || 'N/A',
+    'Pagamento': appointment.paymentDone ? 'Pago' : 'Pendente'
   }));
 
   // Criar workbook e worksheet

@@ -438,7 +438,7 @@ async function importAMBProcedures(
 /**
  * Script principal de importação de procedimentos
  */
-async function importProcedures() {
+export async function importProcedures() {
   console.log('🚀 Iniciando importação de procedimentos/exames...\n');
 
   const stats = {
@@ -488,13 +488,15 @@ async function importProcedures() {
   }
 }
 
-// Executar o script
-importProcedures()
-  .then(() => {
-    console.log('🎉 Script finalizado com sucesso!');
-    process.exit(0);
-  })
-  .catch((error) => {
-    console.error('💥 Script finalizado com erro:', error);
-    process.exit(1);
-  });
+// Executar o script apenas se for chamado diretamente
+if (require.main === module) {
+  importProcedures()
+    .then(() => {
+      console.log('🎉 Script finalizado com sucesso!');
+      process.exit(0);
+    })
+    .catch((error) => {
+      console.error('💥 Script finalizado com erro:', error);
+      process.exit(1);
+    });
+}

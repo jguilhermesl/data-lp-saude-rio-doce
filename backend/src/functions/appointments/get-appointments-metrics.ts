@@ -21,6 +21,7 @@ const querySchema = z.object({
   }),
   page: z.string().optional().transform((val) => (val ? parseInt(val) : 1)),
   limit: z.string().optional().transform((val) => (val ? parseInt(val) : 100)),
+  exportAll: z.string().optional().transform((val) => val === 'true'),
   search: z.string().optional(),
   doctorId: z.string().optional(),
   patientId: z.string().optional(),
@@ -30,7 +31,7 @@ const querySchema = z.object({
 
 export const getAppointmentsMetrics = async (req: any, res: any) => {
   try {
-    const { startDate, endDate, page, limit, search, doctorId, patientId, specialtyId, insuranceName } =
+    const { startDate, endDate, page, limit, exportAll, search, doctorId, patientId, specialtyId, insuranceName } =
       querySchema.parse(req.query);
 
     // Construir filtros para busca de atendimentos
@@ -51,7 +52,9 @@ export const getAppointmentsMetrics = async (req: any, res: any) => {
       ];
     }
 
-    const skip = (page - 1) * limit;
+    // Se exportAll=true, não aplicar paginação
+    const skip = exportAll ? undefined : (page - 1) * limit;
+    const take = exportAll ? undefined : limit;
 
     console.log(startDate, endDate)
     
@@ -101,8 +104,8 @@ export const getAppointmentsMetrics = async (req: any, res: any) => {
           },
         },
         orderBy: { appointmentDate: 'desc' },
-        skip,
-        take: limit,
+        ...(skip !== undefined && { skip }),
+        ...(take !== undefined && { take }),
       }),
       appointmentDAO.count(where),
       // Buscar appointments para calcular faturamento (appointmentDate OR createdDate)

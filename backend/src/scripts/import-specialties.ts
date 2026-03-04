@@ -80,7 +80,7 @@ async function fetchSpecialtiesPage(page: number): Promise<SpecialtyAPIResponse 
 /**
  * Script principal de importação de especialidades
  */
-async function importSpecialties() {
+export async function importSpecialties() {
   console.log('🚀 Iniciando importação de especialidades...\n');
 
   let page = 1;
@@ -180,13 +180,15 @@ async function importSpecialties() {
   }
 }
 
-// Executar o script
-importSpecialties()
-  .then(() => {
-    console.log('🎉 Script finalizado com sucesso!');
-    process.exit(0);
-  })
-  .catch((error) => {
-    console.error('💥 Script finalizado com erro:', error);
-    process.exit(1);
-  });
+// Executar o script apenas se for chamado diretamente
+if (require.main === module) {
+  importSpecialties()
+    .then(() => {
+      console.log('🎉 Script finalizado com sucesso!');
+      process.exit(0);
+    })
+    .catch((error) => {
+      console.error('💥 Script finalizado com erro:', error);
+      process.exit(1);
+    });
+}

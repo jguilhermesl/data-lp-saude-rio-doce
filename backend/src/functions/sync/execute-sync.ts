@@ -1,7 +1,11 @@
 import { Request, Response } from 'express';
-import { spawn } from 'child_process';
-import { join } from 'path';
-import { env } from '@/env';
+import { importSpecialties } from '@/scripts/import-specialties';
+import { importDoctors } from '@/scripts/import-doctors';
+import { importPatients } from '@/scripts/import-patients';
+import { importProcedures } from '@/scripts/import-procedures';
+import { importDoctorSpecialties } from '@/scripts/import-doctor-specialties';
+import { importAppointments } from '@/scripts/import-appointments';
+import { importAppointmentProcedures } from '@/scripts/import-appointment-procedures';
 
 /**
  * Interface para resultado de execução
@@ -15,86 +19,76 @@ interface ExecutionResult {
 }
 
 /**
- * Determina o comando e caminho correto baseado no ambiente
+ * Executa uma função de importação capturando o console.log
  */
-function getScriptConfig(scriptPath: string) {
-  const isProduction = env.NODE_ENV === 'production';
-  
-  if (isProduction) {
-    // Em produção, usar node e arquivos compilados em dist/
-    const compiledPath = scriptPath.replace('src/', 'dist/').replace('.ts', '.js');
-    return {
-      command: 'node',
-      path: compiledPath,
-      cwd: join(__dirname, '../../..'), // Em produção, estamos em dist/functions/sync, volta para backend/
+async function executeImportFunction(
+  importFunction: () => Promise<void>,
+  scriptName: string
+): Promise<ExecutionResult> {
+  const startTime = Date.now();
+  let output = '';
+  let errorOutput = '';
+
+  // Capturar console.log e console.error
+  const originalLog = console.log;
+  const originalError = console.error;
+  const originalWarn = console.warn;
+
+  try {
+    // Redirecionar console.log
+    console.log = (...args: any[]) => {
+      const message = args.map(arg => 
+        typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
+      ).join(' ');
+      output += message + '\n';
+      originalLog(...args); // Manter log original também
     };
-  } else {
-    // Em desenvolvimento, usar tsx e arquivos TypeScript em src/
-    return {
-      command: 'tsx',
-      path: scriptPath,
-      cwd: join(__dirname, '../../..'), // Em dev, estamos em src/functions/sync, volta para backend/
+
+    // Redirecionar console.error
+    console.error = (...args: any[]) => {
+      const message = args.map(arg => 
+        typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
+      ).join(' ');
+      errorOutput += message + '\n';
+      originalError(...args); // Manter log original também
     };
+
+    // Redirecionar console.warn
+    console.warn = (...args: any[]) => {
+      const message = args.map(arg => 
+        typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
+      ).join(' ');
+      output += message + '\n';
+      originalWarn(...args); // Manter log original também
+    };
+
+    // Executar a função
+    await importFunction();
+
+    const duration = Date.now() - startTime;
+
+    return {
+      scriptName,
+      success: true,
+      duration,
+      output,
+    };
+  } catch (error) {
+    const duration = Date.now() - startTime;
+
+    return {
+      scriptName,
+      success: false,
+      duration,
+      error: error instanceof Error ? error.message : String(error),
+      output: errorOutput || output,
+    };
+  } finally {
+    // Restaurar console original
+    console.log = originalLog;
+    console.error = originalError;
+    console.warn = originalWarn;
   }
-}
-
-/**
- * Executa um script de importação
- */
-function executeImportScript(scriptPath: string, scriptName: string): Promise<ExecutionResult> {
-  return new Promise((resolve) => {
-    const startTime = Date.now();
-    const config = getScriptConfig(scriptPath);
-    
-    const child = spawn(config.command, [config.path], {
-      cwd: config.cwd,
-      stdio: 'pipe',
-    });
-
-    let output = '';
-    let errorOutput = '';
-
-    // Capturar stdout
-    child.stdout.on('data', (data) => {
-      const text = data.toString();
-      output += text;
-    });
-
-    // Capturar stderr
-    child.stderr.on('data', (data) => {
-      const text = data.toString();
-      errorOutput += text;
-    });
-
-    // Quando o processo terminar
-    child.on('close', (code) => {
-      const duration = Date.now() - startTime;
-
-      if (code === 0) {
-        resolve({
-          scriptName,
-          success: true,
-          duration,
-          output,
-        });
-      } else {
-        resolve({
-          scriptName,
-          success: false,
-          duration,
-          error: errorOutput || `Exit code: ${code}`,
-          output,
-        });
-      }
-    });
-  });
-}
-
-/**
- * Executa um único script
- */
-async function executeSequential(script: { path: string; name: string }): Promise<ExecutionResult> {
-  return executeImportScript(script.path, script.name);
 }
 
 /**
@@ -120,78 +114,109 @@ export async function executeSync(req: Request, res: Response) {
   let hasErrors = false;
 
   try {
+    console.log('🚀 Iniciando sincronização completa de dados...\n');
+
     // ============================================
     // FASE 1: Importações Base (Sequencial)
     // ============================================
-    const phase1Scripts = [
-      { path: 'src/scripts/import-specialties.ts', name: 'import-specialties' },
-      { path: 'src/scripts/import-doctors.ts', name: 'import-doctors' },
-      { path: 'src/scripts/import-patients.ts', name: 'import-patients' },
-      { path: 'src/scripts/import-procedures.ts', name: 'import-procedures' },
+    console.log('📋 FASE 1: Importações Base\n');
+
+    const phase1Functions = [
+      { fn: importSpecialties, name: 'import-specialties' },
+      { fn: importDoctors, name: 'import-doctors' },
+      { fn: importPatients, name: 'import-patients' },
+      { fn: importProcedures, name: 'import-procedures' },
     ];
 
     // Executar sequencialmente para evitar problemas de conexão
-    for (const script of phase1Scripts) {
-      const result = await executeSequential(script);
+    for (const { fn, name } of phase1Functions) {
+      console.log(`\n━━━━ Executando: ${name} ━━━━\n`);
+      const result = await executeImportFunction(fn, name);
       results.push(result);
-      
+
       if (!result.success) {
         hasErrors = true;
-        // Abortar fases seguintes se houver erro na Fase 1
-        throw new Error(`Erro na Fase 1: ${script.name}`);
+        console.error(`\n❌ Erro em ${name}, abortando fases seguintes.\n`);
+        throw new Error(`Erro na Fase 1: ${name}`);
       }
+
+      console.log(`\n✅ ${name} concluído em ${formatDuration(result.duration)}\n`);
     }
 
     // ============================================
     // FASE 2: Relacionamento Médico-Especialidade
     // ============================================
-    const phase2Result = await executeSequential({
-      path: 'src/scripts/import-doctor-specialties.ts',
-      name: 'import-doctor-specialties',
-    });
+    console.log('\n📋 FASE 2: Relacionamento Médico-Especialidade\n');
+    console.log('\n━━━━ Executando: import-doctor-specialties ━━━━\n');
+    
+    const phase2Result = await executeImportFunction(importDoctorSpecialties, 'import-doctor-specialties');
     results.push(phase2Result);
 
     if (!phase2Result.success) {
       hasErrors = true;
-      // Continua para Fase 3 mesmo com erro (seguindo lógica do sync-all.ts)
+      console.warn('\n⚠️  Erro na Fase 2, continuando com Fase 3...\n');
+    } else {
+      console.log(`\n✅ import-doctor-specialties concluído em ${formatDuration(phase2Result.duration)}\n`);
     }
 
     // ============================================
     // FASE 3: Atendimentos
     // ============================================
-    const phase3Result = await executeSequential({
-      path: 'src/scripts/import-appointments.ts',
-      name: 'import-appointments',
-    });
+    console.log('\n📋 FASE 3: Atendimentos\n');
+    console.log('\n━━━━ Executando: import-appointments ━━━━\n');
+    
+    // Quando executado via HTTP, importar apenas dados do ano atual (2026)
+    const currentYear = new Date().getFullYear();
+    const phase3Result = await executeImportFunction(
+      () => importAppointments({ 
+        startDate: `01/01/${currentYear}`,
+        endDate: `31/12/${currentYear + 10}` // 10 anos à frente para garantir
+      }), 
+      'import-appointments'
+    );
     results.push(phase3Result);
 
     if (!phase3Result.success) {
       hasErrors = true;
-      // Continua para Fase 4 mesmo com erro (seguindo lógica do sync-all.ts)
+      console.warn('\n⚠️  Erro na Fase 3, continuando com Fase 4...\n');
+    } else {
+      console.log(`\n✅ import-appointments concluído em ${formatDuration(phase3Result.duration)}\n`);
     }
 
     // ============================================
     // FASE 4: Relacionamentos Appointment-Procedimentos
     // ============================================
-    const phase4Result = await executeSequential({
-      path: 'src/scripts/import-appointment-procedures.ts',
-      name: 'import-appointment-procedures',
-    });
+    console.log('\n📋 FASE 4: Relacionamentos Appointment-Procedimentos\n');
+    console.log('\n━━━━ Executando: import-appointment-procedures ━━━━\n');
+    
+    const phase4Result = await executeImportFunction(importAppointmentProcedures, 'import-appointment-procedures');
     results.push(phase4Result);
 
     if (!phase4Result.success) {
       hasErrors = true;
+      console.warn('\n⚠️  Erro na Fase 4\n');
+    } else {
+      console.log(`\n✅ import-appointment-procedures concluído em ${formatDuration(phase4Result.duration)}\n`);
     }
 
     // ============================================
     // RESPOSTA
     // ============================================
     const totalDuration = Date.now() - startTime;
-    
+
+    console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('🎉 SINCRONIZAÇÃO COMPLETA FINALIZADA');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log(`⏱️  Tempo total: ${formatDuration(totalDuration)}`);
+    console.log(`📊 Scripts executados: ${results.length}`);
+    console.log(`✅ Sucessos: ${results.filter(r => r.success).length}`);
+    console.log(`❌ Falhas: ${results.filter(r => !r.success).length}`);
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+
     const response = {
       success: !hasErrors,
-      message: hasErrors 
-        ? 'Sincronização concluída com erros' 
+      message: hasErrors
+        ? 'Sincronização concluída com erros'
         : 'Sincronização concluída com sucesso',
       statistics: {
         totalScripts: results.length,
@@ -212,7 +237,13 @@ export async function executeSync(req: Request, res: Response) {
     return res.status(hasErrors ? 500 : 200).json(response);
   } catch (error) {
     const totalDuration = Date.now() - startTime;
-    
+
+    console.error('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.error('💥 ERRO FATAL NA SINCRONIZAÇÃO');
+    console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.error(`❌ ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+    console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+
     return res.status(500).json({
       success: false,
       message: 'Erro fatal durante a sincronização',

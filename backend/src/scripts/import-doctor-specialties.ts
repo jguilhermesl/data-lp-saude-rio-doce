@@ -211,7 +211,7 @@ function chunkArray<T>(array: T[], size: number): T[][] {
 /**
  * Script principal
  */
-async function importDoctorSpecialties() {
+export async function importDoctorSpecialties() {
   console.log('🚀 Iniciando importação de especialidades dos médicos...\n');
 
   let totalRelationships = 0;
@@ -297,13 +297,15 @@ async function importDoctorSpecialties() {
   }
 }
 
-// Executar o script
-importDoctorSpecialties()
-  .then(() => {
-    console.log('🎉 Script finalizado com sucesso!');
-    process.exit(0);
-  })
-  .catch((error) => {
-    console.error('💥 Script finalizado com erro:', error);
-    process.exit(1);
-  });
+// Executar o script apenas se for chamado diretamente
+if (require.main === module) {
+  importDoctorSpecialties()
+    .then(() => {
+      console.log('🎉 Script finalizado com sucesso!');
+      process.exit(0);
+    })
+    .catch((error) => {
+      console.error('💥 Script finalizado com erro:', error);
+      process.exit(1);
+    });
+}

@@ -127,6 +127,21 @@ export const appointmentsApi = {
     return response.data.data;
   },
 
+  getAllForExport: async (
+    params: Omit<GetAppointmentsMetricsParams, 'page' | 'limit'>
+  ): Promise<Appointment[]> => {
+    const response = await api.get<{ data: AppointmentsMetricsResponse }>(
+      '/appointments/metrics/summary',
+      {
+        params: {
+          ...params,
+          exportAll: 'true',
+        },
+      }
+    );
+    return response.data.data.appointments;
+  },
+
   getById: async (appointmentId: string): Promise<AppointmentDetails> => {
     const response = await api.get<{ data: AppointmentDetails }>(
       `/appointments/${appointmentId}`

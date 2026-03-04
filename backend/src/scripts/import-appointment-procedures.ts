@@ -105,7 +105,7 @@ async function cleanupDuplicates() {
 /**
  * Script principal de importação de relacionamentos appointment_procedures
  */
-async function importAppointmentProcedures() {
+export async function importAppointmentProcedures() {
   console.log('🚀 Iniciando importação de relacionamentos appointment_procedures...\n');
 
   try {
@@ -286,13 +286,15 @@ async function importAppointmentProcedures() {
   }
 }
 
-// Executar o script
-importAppointmentProcedures()
-  .then(() => {
-    console.log('🎉 Script finalizado com sucesso!');
-    process.exit(0);
-  })
-  .catch((error) => {
-    console.error('💥 Script finalizado com erro:', error);
-    process.exit(1);
-  });
+// Executar o script apenas se for chamado diretamente
+if (require.main === module) {
+  importAppointmentProcedures()
+    .then(() => {
+      console.log('🎉 Script finalizado com sucesso!');
+      process.exit(0);
+    })
+    .catch((error) => {
+      console.error('💥 Script finalizado com erro:', error);
+      process.exit(1);
+    });
+}

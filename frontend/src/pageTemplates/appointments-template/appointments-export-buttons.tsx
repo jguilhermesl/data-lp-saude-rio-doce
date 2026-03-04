@@ -2,12 +2,13 @@
 
 import { useState } from 'react';
 import { pdf } from '@react-pdf/renderer';
-import { AppointmentMetricsSummary, Appointment } from '@/services/api/appointments';
+import { AppointmentMetricsSummary, Appointment, appointmentsApi } from '@/services/api/appointments';
 import { AppointmentsPDFReport } from './appointments-pdf-report';
 import { exportAppointmentsToExcel } from './appointments-excel-export';
 import { FileDown, FileSpreadsheet } from 'lucide-react';
 import { format } from 'date-fns';
 import { type DateRange } from 'react-day-picker';
+import { toLocalISOString } from '@/lib/utils/date';
 
 interface AppointmentsExportButtonsProps {
   summary?: AppointmentMetricsSummary;
@@ -65,12 +66,37 @@ export const AppointmentsExportButtons = ({
     }
   };
 
-  const handleExportExcel = () => {
-    if (appointments.length === 0 || isLoading) return;
+  const handleExportExcel = async () => {
+    if (!summary || isLoading) return;
 
     try {
       setIsExportingExcel(true);
-      exportAppointmentsToExcel(appointments);
+
+      // Calcular datas do período (mesma lógica do index.tsx)
+      const startDate = dateRange?.from 
+        ? toLocalISOString(dateRange.from) 
+        : toLocalISOString(new Date());
+      
+      const endDate = dateRange?.to 
+        ? toLocalISOString(new Date(
+            dateRange.to.getFullYear(),
+            dateRange.to.getMonth(),
+            dateRange.to.getDate(),
+            23,
+            59,
+            59
+          ))
+        : toLocalISOString(new Date());
+
+      // Buscar TODOS os appointments do período, desconsiderando paginação
+      const allAppointments = await appointmentsApi.getAllForExport({
+        startDate,
+        endDate,
+        search: search || undefined,
+      });
+
+      // Exportar todos os dados
+      exportAppointmentsToExcel(allAppointments);
     } catch (error) {
       console.error('Erro ao exportar Excel:', error);
       alert('Erro ao gerar o arquivo Excel. Tente novamente.');

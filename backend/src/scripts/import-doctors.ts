@@ -88,7 +88,7 @@ async function fetchDoctorsPage(page: number): Promise<DoctorAPIResponse | null>
 /**
  * Script principal de importação de médicos
  */
-async function importDoctors() {
+export async function importDoctors() {
   console.log('🚀 Iniciando importação de médicos...\n');
 
   let page = 1;
@@ -198,13 +198,15 @@ async function importDoctors() {
   }
 }
 
-// Executar o script
-importDoctors()
-  .then(() => {
-    console.log('🎉 Script finalizado com sucesso!');
-    process.exit(0);
-  })
-  .catch((error) => {
-    console.error('💥 Script finalizado com erro:', error);
-    process.exit(1);
-  });
+// Executar o script apenas se for chamado diretamente
+if (require.main === module) {
+  importDoctors()
+    .then(() => {
+      console.log('🎉 Script finalizado com sucesso!');
+      process.exit(0);
+    })
+    .catch((error) => {
+      console.error('💥 Script finalizado com erro:', error);
+      process.exit(1);
+    });
+}
