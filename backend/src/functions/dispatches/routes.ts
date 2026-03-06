@@ -14,14 +14,13 @@ import { deleteNote } from './delete-note';
 const routerDispatches = Router();
 
 // Todas as rotas de dispatches requerem autenticação
-routerDispatches.use(authMiddleware);
-
 // Rotas de disparo (POST)
 routerDispatches.post('/dispatches/30-days', (req, res) => dispatch30Days(req, res));
 routerDispatches.post('/dispatches/60-days', (req, res) => dispatch60Days(req, res));
 routerDispatches.post('/dispatches/90-days', (req, res) => dispatch90Days(req, res));
 
 // Rotas de relatórios (GET)
+routerDispatches.use(authMiddleware);
 routerDispatches.get('/dispatches/reports', (req, res) => getDispatchReports(req, res));
 routerDispatches.get('/dispatches/:id', (req, res) => getDispatchById(req, res));
 
