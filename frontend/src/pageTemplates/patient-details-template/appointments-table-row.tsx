@@ -1,5 +1,7 @@
-'use client';
-import { Table } from '@/components/ui/table/table';
+"use client";
+import { Table } from "@/components/ui/table/table";
+import { useRouter } from "next/navigation";
+import { ExternalLink } from "lucide-react";
 
 interface Appointment {
   id: string;
@@ -25,7 +27,7 @@ interface Appointment {
       code?: string;
     };
   }>;
-   examsRaw: string;
+  examsRaw: string;
 }
 
 interface AppointmentsTableRowProps {
@@ -35,26 +37,32 @@ interface AppointmentsTableRowProps {
 export const AppointmentsTableRow = ({
   appointment,
 }: AppointmentsTableRowProps) => {
+  const router = useRouter();
+
   const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL',
+    return new Intl.NumberFormat("pt-BR", {
+      style: "currency",
+      currency: "BRL",
     }).format(value);
   };
 
   const procedures = appointment.appointmentProcedures
     .map((ap) => ap.procedure.name)
-    .join(', ');
+    .join(", ");
+
+  const handleRowClick = () => {
+    router.push(`/appointments/${appointment.id}`);
+  };
 
   return (
-    <Table.Row>
+    <Table.Row onClick={handleRowClick}>
       <Table.Col>
         <div className="flex flex-col">
           <span className="font-medium">
             {(() => {
               const [year, month, day] = appointment.appointmentDate
-                .split('T')[0]
-                .split('-');
+                .split("T")[0]
+                .split("-");
               return `${day}/${month}/${year}`;
             })()}
           </span>
@@ -68,7 +76,7 @@ export const AppointmentsTableRow = ({
       <Table.Col>
         <div className="flex flex-col">
           <span className="font-medium">
-            {appointment.doctor?.name || 'Não informado'}
+            {appointment.doctor?.name || "Não informado"}
           </span>
           {appointment.doctor?.crm && (
             <span className="text-xs text-gray-500">
@@ -87,18 +95,21 @@ export const AppointmentsTableRow = ({
       <Table.Col className="font-medium text-green-600">
         {appointment.paidValue
           ? formatCurrency(Number(appointment.paidValue))
-          : '-'}
+          : "-"}
       </Table.Col>
       <Table.Col className="text-center">
         <span
           className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
             appointment.paymentDone
-              ? 'bg-green-100 text-green-800'
-              : 'bg-yellow-100 text-yellow-800'
+              ? "bg-green-100 text-green-800"
+              : "bg-yellow-100 text-yellow-800"
           }`}
         >
-          {appointment.paymentDone ? 'Pago' : 'Pendente'}
+          {appointment.paymentDone ? "Pago" : "Pendente"}
         </span>
+      </Table.Col>
+      <Table.Col className="text-center">
+        <ExternalLink className="h-4 w-4 text-blue-500 mx-auto" />
       </Table.Col>
     </Table.Row>
   );
