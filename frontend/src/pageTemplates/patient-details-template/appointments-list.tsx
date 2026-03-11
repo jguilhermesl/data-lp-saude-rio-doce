@@ -1,20 +1,24 @@
-import { Table } from '@/components/ui/table/table';
-import { Calendar } from 'lucide-react';
-import { AppointmentsTableRow } from './appointments-table-row';
-import { Appointment } from '@/@types/Appointment';
+import { Table } from "@/components/ui/table/table";
+import { Calendar } from "lucide-react";
+import { AppointmentsTableRow } from "./appointments-table-row";
+import { Appointment } from "@/@types/Appointment";
 
 interface AppointmentsListProps {
   appointments: Appointment[];
   isLoading: boolean;
 }
 
-export const AppointmentsList = ({ appointments, isLoading }: AppointmentsListProps) => {
+export const AppointmentsList = ({
+  appointments,
+  isLoading,
+}: AppointmentsListProps) => {
   const headers = [
-    'Data',
-    'Médico',
-    'Procedimentos',
-    'Valor Pago',
-    'Status',
+    "Data",
+    "Médico",
+    "Procedimentos",
+    "Valor Pago",
+    "Status",
+    "",
   ];
 
   if (isLoading) {
@@ -68,7 +72,10 @@ export const AppointmentsList = ({ appointments, isLoading }: AppointmentsListPr
       <div className="border rounded-md">
         <Table headers={headers}>
           {appointments.map((appointment) => (
-            <AppointmentsTableRow key={appointment.id} appointment={appointment} />
+            <AppointmentsTableRow
+              key={appointment.id}
+              appointment={appointment}
+            />
           ))}
         </Table>
       </div>
