@@ -1,15 +1,18 @@
-import { Request, Response } from 'express';
-import { importSpecialties } from '@/scripts/import-specialties';
-import { importDoctors } from '@/scripts/import-doctors';
-import { importPatients } from '@/scripts/import-patients';
-import { importProcedures } from '@/scripts/import-procedures';
-import { importDoctorSpecialties } from '@/scripts/import-doctor-specialties';
-import { importAppointments } from '@/scripts/import-appointments';
-import { importAppointmentProcedures } from '@/scripts/import-appointment-procedures';
+import { Request, Response } from "express";
+import { importSpecialties } from "@/scripts/import-specialties";
+import { importDoctors } from "@/scripts/import-doctors";
+import { importPatients } from "@/scripts/import-patients";
+import { importProcedures } from "@/scripts/import-procedures";
+import { importDoctorSpecialties } from "@/scripts/import-doctor-specialties";
+import { importAppointments } from "@/scripts/import-appointments";
+import { importAppointmentProcedures } from "@/scripts/import-appointment-procedures";
+import {
+  subMonths,
+  startOfMonth,
+  endOfYear,
+  format as formatDate,
+} from "date-fns";
 
-/**
- * Interface para resultado de execução
- */
 interface ExecutionResult {
   scriptName: string;
   success: boolean;
@@ -18,250 +21,123 @@ interface ExecutionResult {
   output?: string;
 }
 
-/**
- * Executa uma função de importação capturando o console.log
- */
-async function executeImportFunction(
-  importFunction: () => Promise<void>,
-  scriptName: string
-): Promise<ExecutionResult> {
-  const startTime = Date.now();
-  let output = '';
-  let errorOutput = '';
-
-  // Capturar console.log e console.error
-  const originalLog = console.log;
-  const originalError = console.error;
-  const originalWarn = console.warn;
-
-  try {
-    // Redirecionar console.log
-    console.log = (...args: any[]) => {
-      const message = args.map(arg => 
-        typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
-      ).join(' ');
-      output += message + '\n';
-      originalLog(...args); // Manter log original também
-    };
-
-    // Redirecionar console.error
-    console.error = (...args: any[]) => {
-      const message = args.map(arg => 
-        typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
-      ).join(' ');
-      errorOutput += message + '\n';
-      originalError(...args); // Manter log original também
-    };
-
-    // Redirecionar console.warn
-    console.warn = (...args: any[]) => {
-      const message = args.map(arg => 
-        typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
-      ).join(' ');
-      output += message + '\n';
-      originalWarn(...args); // Manter log original também
-    };
-
-    // Executar a função
-    await importFunction();
-
-    const duration = Date.now() - startTime;
-
-    return {
-      scriptName,
-      success: true,
-      duration,
-      output,
-    };
-  } catch (error) {
-    const duration = Date.now() - startTime;
-
-    return {
-      scriptName,
-      success: false,
-      duration,
-      error: error instanceof Error ? error.message : String(error),
-      output: errorOutput || output,
-    };
-  } finally {
-    // Restaurar console original
-    console.log = originalLog;
-    console.error = originalError;
-    console.warn = originalWarn;
-  }
-}
+// Helper para formatar a data conforme o script espera (DD/MM/YYYY)
+const formatDateSync = (date: Date) => formatDate(date, "dd/MM/yyyy");
 
 /**
- * Formata duração em tempo legível
+ * Lógica Central de Sincronização
+ * Pode ser chamada tanto pelo Controller (Express) quanto pelo Script (CLI)
  */
-function formatDuration(ms: number): string {
-  const seconds = Math.floor(ms / 1000);
-  const minutes = Math.floor(seconds / 60);
-  const remainingSeconds = seconds % 60;
-
-  if (minutes > 0) {
-    return `${minutes}m ${remainingSeconds}s`;
-  }
-  return `${seconds}s`;
-}
-
-/**
- * Executa a sincronização completa de dados
- */
-export async function executeSync(req: Request, res: Response) {
+export async function runSyncAllLogic() {
   const startTime = Date.now();
   const results: ExecutionResult[] = [];
-  let hasErrors = false;
 
+  // Datas: Mês anterior até o fim do ano atual
+  const now = new Date();
+  const startDate = formatDateSync(startOfMonth(subMonths(now, 1)));
+  const endDate = formatDateSync(endOfYear(now));
+
+  console.log(` Período de sincronização: ${startDate} até ${endDate}\n`);
+
+  // --- FASE 1: Importações Base (PARALELO para melhor performance) ---
+  console.log(" FASE 1: Importações Base (Paralelo)\n");
+  const phase1Functions = [
+    { fn: importSpecialties, name: "import-specialties" },
+    { fn: importDoctors, name: "import-doctors" },
+    { fn: importPatients, name: "import-patients" },
+    { fn: importProcedures, name: "import-procedures" },
+  ];
+
+  for (const p of phase1Functions) {
+    console.log(`▶ Iniciando fase: ${p.name}`);
+    const res = await executeImportFunction(p.fn, p.name);
+    results.push(res);
+
+    if (!res.success) {
+      console.error(
+        `❌ Falha crítica em ${p.name}. Interrompendo sincronização.`,
+      );
+      throw new Error(`Falha crítica na Fase 1 (${p.name}). Abortando.`);
+    }
+  }
+
+  // --- FASE 2: Relacionamentos ---
+  console.log("\n FASE 2: Relacionamentos Médico-Especialidade\n");
+  results.push(
+    await executeImportFunction(
+      importDoctorSpecialties,
+      "import-doctor-specialties",
+    ),
+  );
+
+  // --- FASE 3: Atendimentos (Com as datas calculadas) ---
+  console.log("\n FASE 3: Atendimentos\n");
+  results.push(
+    await executeImportFunction(
+      () => importAppointments({ startDate, endDate }),
+      "import-appointments",
+    ),
+  );
+
+  // --- FASE 4: Vinculação de Procedimentos ---
+  console.log("\n FASE 4: Vinculação Atendimento-Procedimento\n");
+  results.push(
+    await executeImportFunction(
+      importAppointmentProcedures,
+      "import-appointment-procedures",
+    ),
+  );
+
+  return {
+    results,
+    totalDuration: Date.now() - startTime,
+    hasErrors: results.some((r) => !r.success),
+  };
+}
+
+/**
+ * Controller para Rota HTTP (/sync/all)
+ */
+export async function executeSync(req: Request, res: Response) {
   try {
-    console.log('🚀 Iniciando sincronização completa de dados...\n');
+    const { results, totalDuration, hasErrors } = await runSyncAllLogic();
 
-    // ============================================
-    // FASE 1: Importações Base (Sequencial)
-    // ============================================
-    console.log('📋 FASE 1: Importações Base\n');
-
-    const phase1Functions = [
-      { fn: importSpecialties, name: 'import-specialties' },
-      { fn: importDoctors, name: 'import-doctors' },
-      { fn: importPatients, name: 'import-patients' },
-      { fn: importProcedures, name: 'import-procedures' },
-    ];
-
-    // Executar sequencialmente para evitar problemas de conexão
-    for (const { fn, name } of phase1Functions) {
-      console.log(`\n━━━━ Executando: ${name} ━━━━\n`);
-      const result = await executeImportFunction(fn, name);
-      results.push(result);
-
-      if (!result.success) {
-        hasErrors = true;
-        console.error(`\n❌ Erro em ${name}, abortando fases seguintes.\n`);
-        throw new Error(`Erro na Fase 1: ${name}`);
-      }
-
-      console.log(`\n✅ ${name} concluído em ${formatDuration(result.duration)}\n`);
-    }
-
-    // ============================================
-    // FASE 2: Relacionamento Médico-Especialidade
-    // ============================================
-    console.log('\n📋 FASE 2: Relacionamento Médico-Especialidade\n');
-    console.log('\n━━━━ Executando: import-doctor-specialties ━━━━\n');
-    
-    const phase2Result = await executeImportFunction(importDoctorSpecialties, 'import-doctor-specialties');
-    results.push(phase2Result);
-
-    if (!phase2Result.success) {
-      hasErrors = true;
-      console.warn('\n⚠️  Erro na Fase 2, continuando com Fase 3...\n');
-    } else {
-      console.log(`\n✅ import-doctor-specialties concluído em ${formatDuration(phase2Result.duration)}\n`);
-    }
-
-    // ============================================
-    // FASE 3: Atendimentos
-    // ============================================
-    console.log('\n📋 FASE 3: Atendimentos\n');
-    console.log('\n━━━━ Executando: import-appointments ━━━━\n');
-    
-    // Quando executado via HTTP, importar apenas dados do ano atual (2026)
-    const currentYear = new Date().getFullYear();
-    const phase3Result = await executeImportFunction(
-      () => importAppointments({ 
-        startDate: `01/01/${currentYear}`,
-        endDate: `31/12/${currentYear + 10}` // 10 anos à frente para garantir
-      }), 
-      'import-appointments'
-    );
-    results.push(phase3Result);
-
-    if (!phase3Result.success) {
-      hasErrors = true;
-      console.warn('\n⚠️  Erro na Fase 3, continuando com Fase 4...\n');
-    } else {
-      console.log(`\n✅ import-appointments concluído em ${formatDuration(phase3Result.duration)}\n`);
-    }
-
-    // ============================================
-    // FASE 4: Relacionamentos Appointment-Procedimentos
-    // ============================================
-    console.log('\n📋 FASE 4: Relacionamentos Appointment-Procedimentos\n');
-    console.log('\n━━━━ Executando: import-appointment-procedures ━━━━\n');
-    
-    const phase4Result = await executeImportFunction(importAppointmentProcedures, 'import-appointment-procedures');
-    results.push(phase4Result);
-
-    if (!phase4Result.success) {
-      hasErrors = true;
-      console.warn('\n⚠️  Erro na Fase 4\n');
-    } else {
-      console.log(`\n✅ import-appointment-procedures concluído em ${formatDuration(phase4Result.duration)}\n`);
-    }
-
-    // ============================================
-    // RESPOSTA
-    // ============================================
-    const totalDuration = Date.now() - startTime;
-
-    console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.log('🎉 SINCRONIZAÇÃO COMPLETA FINALIZADA');
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.log(`⏱️  Tempo total: ${formatDuration(totalDuration)}`);
-    console.log(`📊 Scripts executados: ${results.length}`);
-    console.log(`✅ Sucessos: ${results.filter(r => r.success).length}`);
-    console.log(`❌ Falhas: ${results.filter(r => !r.success).length}`);
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
-
-    const response = {
+    return res.status(hasErrors ? 500 : 200).json({
       success: !hasErrors,
-      message: hasErrors
-        ? 'Sincronização concluída com erros'
-        : 'Sincronização concluída com sucesso',
-      statistics: {
-        totalScripts: results.length,
-        successCount: results.filter(r => r.success).length,
-        failureCount: results.filter(r => !r.success).length,
-        totalDuration: formatDuration(totalDuration),
-        totalDurationMs: totalDuration,
-      },
-      scripts: results.map(result => ({
-        name: result.scriptName,
-        success: result.success,
-        duration: formatDuration(result.duration),
-        durationMs: result.duration,
-        error: result.error,
-      })),
-    };
-
-    return res.status(hasErrors ? 500 : 200).json(response);
+      duration: formatDuration(totalDuration),
+      scripts: results,
+    });
   } catch (error) {
-    const totalDuration = Date.now() - startTime;
-
-    console.error('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.error('💥 ERRO FATAL NA SINCRONIZAÇÃO');
-    console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.error(`❌ ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
-    console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
-
     return res.status(500).json({
       success: false,
-      message: 'Erro fatal durante a sincronização',
-      error: error instanceof Error ? error.message : 'Erro desconhecido',
-      statistics: {
-        totalScripts: results.length,
-        successCount: results.filter(r => r.success).length,
-        failureCount: results.filter(r => !r.success).length,
-        totalDuration: formatDuration(totalDuration),
-        totalDurationMs: totalDuration,
-      },
-      scripts: results.map(result => ({
-        name: result.scriptName,
-        success: result.success,
-        duration: formatDuration(result.duration),
-        durationMs: result.duration,
-        error: result.error,
-      })),
+      error: error instanceof Error ? error.message : "Erro fatal no Sync All",
     });
   }
+}
+
+// --- Funções Auxiliares (Mantidas do seu código original) ---
+
+async function executeImportFunction(
+  importFunction: () => Promise<void>,
+  scriptName: string,
+): Promise<ExecutionResult> {
+  const start = Date.now();
+  try {
+    await importFunction();
+    return { scriptName, success: true, duration: Date.now() - start };
+  } catch (err) {
+    return {
+      scriptName,
+      success: false,
+      duration: Date.now() - start,
+      error: String(err),
+    };
+  }
+}
+
+function formatDuration(ms: number): string {
+  const seconds = Math.floor(ms / 1000);
+  return seconds > 60
+    ? `${Math.floor(seconds / 60)}m ${seconds % 60}s`
+    : `${seconds}s`;
 }
